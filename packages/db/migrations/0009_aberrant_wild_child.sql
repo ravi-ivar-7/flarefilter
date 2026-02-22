@@ -1,1 +1,0 @@
-ALTER TABLE `action_logs` DROP COLUMN `cf_list_item_id`;

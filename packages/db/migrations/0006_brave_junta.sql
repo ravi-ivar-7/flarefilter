@@ -1,1 +1,0 @@
-ALTER TABLE `add_to_list_rules` ADD `cf_list_name` text;

@@ -1,1 +1,0 @@
-ALTER TABLE `action_logs` ADD `metadata` text;

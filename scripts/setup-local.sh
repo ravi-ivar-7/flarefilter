@@ -1,33 +1,61 @@
 #!/bin/bash
+# ============================================
+# FlareFilter — Local Setup Script
+# ============================================
+#
+# Usage: pnpm run setup
+#
+# Automates the full local dev bootstrap:
+#   1. Install dependencies
+#   2. Generate & apply DB migrations
+#   3. Create local auth secrets
+# ============================================
 
-# FlareFilter Local Setup Script
-# This script automates the entire local development environment initialization.
+set -e
+set -o pipefail
 
-set -e # Exit on error
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/utils.sh"
 
-echo "🚀 Starting FlareFilter Local Setup..."
+log_header "FlareFilter  Local Setup"
 
-# 1. Install dependencies
-echo "📦 Installing dependencies..."
+# ── 1. Install Dependencies ─────────────────
+log_step "${ICON_PACKAGE} Installing dependencies"
 pnpm install
+log_success "Dependencies installed"
 
-# 2. Setup Database
-echo "🗄️ Generating database schema & applying local migrations..."
+echo ""
+
+# ── 2. Database ─────────────────────────────
+log_step "${ICON_DB} Generating DB schema & applying local migrations"
 pnpm --filter @flarefilter/db generate
-npx wrangler d1 migrations apply flarefilter-db --local --config apps/dashboard/wrangler.jsonc --persist-to .wrangler/state
+npx wrangler d1 migrations apply flarefilter-db \
+  --local \
+  --config apps/dashboard/wrangler.jsonc \
+  --persist-to .wrangler/state
+log_success "Database ready"
 
-# 3. Create Secrets
-echo "🔐 Creating local secrets for authentication..."
+echo ""
+
+# ── 3. Local Secrets ────────────────────────
+log_step "${ICON_LOCK} Creating local auth secrets"
 if [ ! -f apps/dashboard/.dev.vars ]; then
   cat <<EOF > apps/dashboard/.dev.vars
 BETTER_AUTH_BASE_URL="http://localhost:5173"
 BETTER_AUTH_SECRET="$(openssl rand -base64 32)"
 EOF
-  echo "✅ apps/dashboard/.dev.vars created."
+  log_success "apps/dashboard/.dev.vars created"
 else
-  echo "ℹ️ apps/dashboard/.dev.vars already exists. Skipping."
+  log_warn "apps/dashboard/.dev.vars already exists — skipping"
 fi
 
-echo "✨ Local setup complete! You can now run 'pnpm dev' to start the system."
-echo "🔗 Dashboard: http://localhost:5173"
-echo "🔗 Worker Cron Test: http://localhost:8787/__scheduled"
+echo ""
+log_divider
+echo -e "${BOLD}${GREEN}${ICON_DONE} Local setup complete!${NC}"
+echo ""
+log_kv "Start dev" "pnpm dev"
+log_link "Dashboard      → http://localhost:5173"
+log_link "Worker (cron)  → http://localhost:8787/__scheduled"
+log_info "Cron does not tick automatically locally — press 't' or visit /__scheduled to trigger it."
+log_divider
+echo ""

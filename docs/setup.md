@@ -23,7 +23,7 @@ pnpm install
 
 # 2. Setup Local Database
 pnpm --filter @flarefilter/db generate
-npx wrangler d1 migrations apply flarefilter-db --local --config apps/dashboard/wrangler.jsonc
+npx wrangler d1 migrations apply flarefilter-db --local --config apps/dashboard/wrangler.jsonc --persist-to .wrangler/state
 
 # 3. Create Local Secrets
 cat <<EOF > apps/dashboard/.dev.vars
@@ -39,6 +39,8 @@ pnpm dev
 1. Open `http://localhost:5173/auth` to **Sign Up** for your local user.
 2. Create an **Organization** & Connect a Cloudflare account.
 3. **Test the Worker**: While `pnpm dev` is running, press **'t'** in the terminal to force a cron event, or visit `http://localhost:8787/__scheduled`.
+
+> ⚠️ **Local cron does not tick automatically.** Unlike production (where Cloudflare fires the cron every minute on its own), the local Miniflare runtime does **not** run the scheduler clock — it just sits idle. You must manually trigger each cron execution using **'t'** or the `/__scheduled` URL.
 
 ---
 
@@ -83,7 +85,7 @@ Run these commands whenever you modify `packages/db/src/schema/`.
 pnpm --filter @flarefilter/db generate
 
 # Apply to Local DB
-npx wrangler d1 migrations apply flarefilter-db --local --config apps/dashboard/wrangler.jsonc
+npx wrangler d1 migrations apply flarefilter-db --local --config apps/dashboard/wrangler.jsonc --persist-to .wrangler/state
 
 # Apply to Production DB
 npx wrangler d1 migrations apply flarefilter-db --remote --config apps/dashboard/wrangler.jsonc

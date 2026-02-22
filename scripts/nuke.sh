@@ -1,41 +1,81 @@
 #!/bin/bash
+# ============================================
+# FlareFilter — Nuke & Reset Script
+# ============================================
+#
+# Usage: pnpm run nuke
+#
+# Wipes everything so you can start perfectly
+# clean. Run 'pnpm run setup' afterwards.
+#
+# Deletes:
+#   - Local D1 databases (.wrangler state)
+#   - Generated migration files
+#   - Local auth secrets (.dev.vars)
+#   - All node_modules
+#   - Build artifacts
+# ============================================
 
-# FlareFilter Nuke & Reset Script
-# Use this when you want to clear EVERYTHING and start fresh.
+set -e
+set -o pipefail
 
-echo "🚨 WARNING: This will delete your local database, auth secrets, and all node_modules!"
-read -p "Are you sure you want to proceed? (y/N) " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]
-then
-    echo "Aborted."
-    exit 1
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/utils.sh"
+
+log_header "FlareFilter  Nuke & Reset"
+
+log_warn "This will delete your local database, generated migrations,"
+log_warn "auth secrets, node_modules, and all build artifacts."
+echo ""
+read -p "$(echo -e "${BOLD}${RED}  Are you sure? (y/N) ${NC}")" -n 1 -r
+echo ""
+
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+  log_info "Aborted. Nothing was deleted."
+  exit 0
 fi
 
-echo "🧹 Cleaning up..."
+echo ""
+log_step "${ICON_CLEAN} Nuking..."
+echo ""
 
-# 1. Remove local state and databases
-echo "🗑️ Removing .wrangler folders (databases & state)..."
+# ── 1. Wrangler State (Local DBs) ───────────
+log_step "Removing .wrangler state (local databases)"
 rm -rf .wrangler
 rm -rf apps/dashboard/.wrangler
 rm -rf apps/worker/.wrangler
+log_success "Wrangler state removed"
 
-# 2. Remove local dev secrets
-echo "🗑️ Removing local .dev.vars..."
+# ── 2. Generated Migrations ─────────────────
+log_step "Removing generated migration files"
+rm -rf packages/db/migrations
+log_success "Migration files removed"
+
+# ── 3. Local Secrets ────────────────────────
+log_step "Removing local auth secrets"
 rm -f apps/dashboard/.dev.vars
+log_success ".dev.vars removed"
 
-# 3. Remove all dependencies
-echo "🗑️ Removing node_modules..."
+# ── 4. node_modules ─────────────────────────
+log_step "Removing node_modules"
 rm -rf node_modules
 rm -rf apps/dashboard/node_modules
 rm -rf apps/worker/node_modules
 rm -rf packages/db/node_modules
 rm -rf packages/types/node_modules
+log_success "node_modules removed"
 
-# 4. Remove build artifacts
-echo "🗑️ Removing build artifacts and logs..."
+# ── 5. Build Artifacts ───────────────────────
+log_step "Removing build artifacts"
 rm -rf apps/dashboard/build
 rm -rf apps/dashboard/.react-router
 rm -rf apps/worker/dist
+log_success "Build artifacts removed"
 
-echo "✨ System nuked. Now run 'pnpm run setup' to start from a perfectly clean slate."
+echo ""
+log_divider
+echo -e "${BOLD}${GREEN}${ICON_DONE} System nuked.${NC}"
+echo ""
+log_kv "Next step" "pnpm run setup"
+log_divider
+echo ""
