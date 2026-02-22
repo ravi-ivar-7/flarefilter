@@ -10,9 +10,9 @@ crons = ["* * * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "flarefilter-db"
-database_id = "efc2d694-c384-42be-b4fe-81d9f4a8accb"
+database_id = "08d3a032-70b5-4541-93f3-2dac72079d3b"
 migrations_dir = "../../packages/db/migrations"
 
 [[kv_namespaces]]
 binding = "BLOCKLIST"
-id = "e0d49be0ec2b421e9b800546b1df43c1"
+id = "5d2ee0304b234b50a2aa0ea58e6c7f88"

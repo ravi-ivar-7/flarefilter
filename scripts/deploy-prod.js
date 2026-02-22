@@ -68,9 +68,9 @@ async function deploy() {
     // ── 1. Auth Check ────────────────────────
     step('Checking Cloudflare authentication');
     const whoami = run('npx wrangler whoami', { silent: true, ignoreError: true });
-    if (!whoami || whoami.includes('Not logged in')) {
+    if (!whoami || whoami.includes('Not logged in') || whoami.includes('not authenticated')) {
         warn('Not logged into Cloudflare — opening login page');
-        run('npx wrangler login');
+        run('npx wrangler login', { silent: false });
     } else {
         success('Authenticated with Cloudflare');
     }
@@ -81,7 +81,7 @@ async function deploy() {
     step('Configuring D1 Database');
     let dbId = '';
     try {
-        const d1List = run('npx wrangler d1 list --format json', { silent: true });
+        const d1List = run('npx wrangler d1 list --json', { silent: true });
         const d1s = JSON.parse(d1List);
         const existing = d1s.find(d => d.name === 'flarefilter-db');
 
@@ -91,12 +91,17 @@ async function deploy() {
             kv('ID', dbId);
         } else {
             info('Creating new D1 database: flarefilter-db');
-            const created = JSON.parse(
-                run('npx wrangler d1 create flarefilter-db --format json', { silent: true })
-            );
-            dbId = created.uuid || created[0]?.uuid;
-            success(`D1 database created`);
-            kv('ID', dbId);
+            const created = run('npx wrangler d1 create flarefilter-db', { silent: true });
+
+            // Extract database_id from config snippet in stdout
+            const match = created.match(/"database_id":\s*"([^"]+)"/);
+            if (match) {
+                dbId = match[1];
+                success(`D1 database created`);
+                kv('ID', dbId);
+            } else {
+                throw new Error("Could not parse D1 create output");
+            }
         }
     } catch (e) {
         error('Failed to find or create D1 database');
@@ -109,7 +114,7 @@ async function deploy() {
     step('Configuring KV Namespace');
     let kvId = '';
     try {
-        const kvList = run('npx wrangler kv namespace list --format json', { silent: true });
+        const kvList = run('npx wrangler kv namespace list', { silent: true });
         const kvs = JSON.parse(kvList);
         const existing = kvs.find(k =>
             k.title === 'flarefilter-worker-BLOCKLIST' || k.title === 'BLOCKLIST'
@@ -121,12 +126,17 @@ async function deploy() {
             kv('ID', kvId);
         } else {
             info('Creating new KV namespace: BLOCKLIST');
-            const created = JSON.parse(
-                run('npx wrangler kv namespace create BLOCKLIST --format json', { silent: true })
-            );
-            kvId = created.id || created[0]?.id;
-            success('KV namespace created');
-            kv('ID', kvId);
+            const created = run('npx wrangler kv namespace create BLOCKLIST', { silent: true });
+
+            // Extract id from config snippet in stdout
+            const match = created.match(/"id":\s*"([^"]+)"/);
+            if (match) {
+                kvId = match[1];
+                success('KV namespace created');
+                kv('ID', kvId);
+            } else {
+                throw new Error("Could not parse KV create output");
+            }
         }
     } catch (e) {
         error('Failed to find or create KV namespace');
@@ -166,14 +176,56 @@ async function deploy() {
     console.log('');
 
     step('Deploying Worker');
-    run('pnpm --filter @flarefilter/worker deploy');
+    run('pnpm --filter @flarefilter/worker run deploy');
     success('Worker deployed');
 
     console.log('');
 
     step('Deploying Dashboard');
-    run('pnpm --filter @flarefilter/dashboard deploy');
+    const deployOutput = run('pnpm --filter dashboard run deploy', { silent: true });
+    console.log(deployOutput); // show the output to the user
     success('Dashboard deployed');
+
+    // ── 6. Sync Cloudflare Secrets ───────────
+    step('Syncing Cloudflare production secrets');
+
+    // Extract the actual deploy URL from the wrangler deploy output
+    let prodUrl = '';
+    const urlMatch = deployOutput.match(/https:\/\/[a-zA-Z0-9-]+\.[a-zA-Z0-9-]+\.workers\.dev/);
+    if (urlMatch) {
+        prodUrl = urlMatch[0];
+        info(`Detected production URL: ${prodUrl}`);
+    } else {
+        warn('Could not automatically detect production URL.');
+        prodUrl = '<YOUR_PRODUCTION_URL>'; // Fallback
+    }
+
+    const devVarsPath = path.join(__dirname, '../apps/dashboard/.dev.vars');
+    let devVars = '';
+    try {
+        devVars = fs.readFileSync(devVarsPath, 'utf8');
+    } catch {
+        // Ignore if missing
+    }
+
+    // Parse current local secret value
+    const secretMatch = devVars.match(/BETTER_AUTH_SECRET="([^"]+)"/);
+    const secret = secretMatch ? secretMatch[1] : '';
+
+    if (secret) {
+        run(
+            `echo "${secret}" | npx wrangler secret put BETTER_AUTH_SECRET --config apps/dashboard/wrangler.jsonc`,
+            { silent: true, ignoreError: true }
+        );
+    }
+
+    if (prodUrl !== '<YOUR_PRODUCTION_URL>') {
+        run(
+            `echo "${prodUrl}" | npx wrangler secret put BETTER_AUTH_BASE_URL --config apps/dashboard/wrangler.jsonc`,
+            { silent: true, ignoreError: true }
+        );
+        success('Cloudflare secrets updated for production');
+    }
 
     // ── Done ─────────────────────────────────
     console.log('');
@@ -182,6 +234,9 @@ async function deploy() {
     console.log('');
     kv('D1 Database ID ', dbId);
     kv('KV Namespace ID', kvId);
+    if (prodUrl !== '<YOUR_PRODUCTION_URL>') {
+        kv('Production URL ', prodUrl);
+    }
     divider();
     console.log('');
 }

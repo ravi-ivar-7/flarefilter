@@ -5,15 +5,11 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
-  useLocation,
 } from "react-router";
-import { useState } from "react";
 
 import type { Route } from "./+types/root";
 import "./app.css";
 import { Header } from "~/components/Header";
-import { Sidebar } from "~/components/Sidebar";
-import { authClient } from "~/lib/auth-client";
 
 export const meta: Route.MetaFunction = () => [
   { title: "FlareFilter - Automated Cloudflare IP Protection" },
@@ -65,36 +61,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { data: session } = authClient.useSession();
-  const location = useLocation();
-
-  // Sidebar only shows when: user is authenticated AND not on the home page
-  const isHomePage = location.pathname === "/";
-  const showSidebar = !!session?.user && !isHomePage;
-
   return (
-    <div className="flex h-screen bg-gray-50 text-gray-900 overflow-hidden font-sans selection:bg-indigo-500/30">
-      {/* Background glow */}
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-indigo-200/30 via-gray-50 to-gray-50 -z-10 pointer-events-none" />
-
-      {/* Sidebar — only rendered when authenticated + not home */}
-      {showSidebar && (
-        <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
-      )}
-
-      {/* Right column: Header + scrollable page content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto overflow-x-hidden relative">
-        {/* Header — always shown */}
-        <Header
-          onToggleSidebar={showSidebar ? () => setIsSidebarOpen(!isSidebarOpen) : undefined}
-        />
-
-        {/* Page content */}
-        <main className="flex-1">
-          <Outlet />
-        </main>
-      </div>
+    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans selection:bg-indigo-500/30 flex flex-col">
+      <Header />
+      <main className="flex-1">
+        <Outlet />
+      </main>
     </div>
   );
 }

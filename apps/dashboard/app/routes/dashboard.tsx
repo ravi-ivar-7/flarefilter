@@ -254,7 +254,7 @@ export default function DashboardPage({ loaderData }: Route.ComponentProps) {
   useEffect(() => { if (!isAddingRule && navigation.state === "idle") setRuleModalZoneId(null); }, [isAddingRule, navigation.state]);
 
   return (
-    <div className="w-full px-4 sm:px-8 lg:px-12 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
       <header className="flex flex-col lg:flex-row justify-between items-center lg:items-end mb-10 gap-8">
         <div className="text-center lg:text-left">
