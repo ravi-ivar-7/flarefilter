@@ -328,6 +328,7 @@ export default function DashboardPage({ loaderData }: Route.ComponentProps) {
 
       {activeTab === "logs" && (
         <AuditLogs
+          zones={zones}
           orgName={orgName}
           dateRange={dateRange}
           onDateRangeChange={setDateRange}
