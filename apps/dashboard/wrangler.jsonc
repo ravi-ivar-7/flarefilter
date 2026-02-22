@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "flarefilter-dashboard",
+  "compatibility_date": "2025-04-04",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "main": "./workers/app.ts",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "flarefilter-db",
+      "database_id": "efc2d694-c384-42be-b4fe-81d9f4a8accb",
+      "migrations_dir": "../../packages/db/migrations"
+    }
+  ]
+}

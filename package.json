@@ -1,0 +1,18 @@
+{
+  "name": "flarefilter",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SaaS-ready, edge-native IP reputation and automated blocking system for Cloudflare.",
+  "scripts": {
+    "dev": "pnpm -r run dev",
+    "setup": "bash scripts/setup-local.sh",
+    "nuke": "bash scripts/nuke.sh",
+    "deploy": "node scripts/deploy-prod.js",
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.30.1"
+}

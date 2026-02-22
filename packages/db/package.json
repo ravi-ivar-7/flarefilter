@@ -1,0 +1,17 @@
+{
+    "name": "@flarefilter/db",
+    "version": "1.0.0",
+    "private": true,
+    "main": "src/schema.ts",
+    "types": "src/schema.ts",
+    "scripts": {
+        "generate": "drizzle-kit generate",
+        "migrate:local": "wrangler d1 migrations apply flarefilter-db --local"
+    },
+    "dependencies": {
+        "drizzle-orm": "^0.39.3"
+    },
+    "devDependencies": {
+        "drizzle-kit": "^0.31.9"
+    }
+}

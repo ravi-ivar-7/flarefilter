@@ -1,0 +1,76 @@
+{
+  "version": "5",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1771693552855,
+      "tag": "0000_strong_layla_miller",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1771693994632,
+      "tag": "0001_awesome_puff_adder",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1771699646055,
+      "tag": "0002_blue_wiccan",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1771699876129,
+      "tag": "0003_motionless_mister_sinister",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1771700194031,
+      "tag": "0004_powerful_black_widow",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1771707508858,
+      "tag": "0005_unknown_squirrel_girl",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1771709807583,
+      "tag": "0006_brave_junta",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1771718528917,
+      "tag": "0007_tense_galactus",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1771718752982,
+      "tag": "0008_sticky_shaman",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1771718913673,
+      "tag": "0009_aberrant_wild_child",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+name = "flarefilter-worker"
+main = "src/index.ts"
+compatibility_date = "2024-02-08"
+
+# The Worker runs frequently (e.g., every minute), but the ACTUAL execution per tenant is completely dynamic.
+# D1 decides if a tenant is due for a check (e.g., this tenant wants checks every 5 mins, that tenant wants checks every 10 mins).
+[triggers]
+crons = ["* * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "flarefilter-db"
+database_id = "efc2d694-c384-42be-b4fe-81d9f4a8accb"
+migrations_dir = "../../packages/db/migrations"
+
+[[kv_namespaces]]
+binding = "BLOCKLIST"
+id = "e0d49be0ec2b421e9b800546b1df43c1"
