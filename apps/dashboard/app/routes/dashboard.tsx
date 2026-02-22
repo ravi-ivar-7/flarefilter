@@ -6,14 +6,14 @@ import { useNavigation, useActionData, useRevalidator, redirect } from "react-ro
 import { getAuth } from "~/lib/auth";
 import { useState, useEffect } from "react";
 
-import { MetricsGrid } from "~/components/dashboard/MetricsGrid";
-import { ZonesList } from "~/components/dashboard/ZonesList";
-import { RecentBlocks } from "~/components/dashboard/RecentBlocks";
 import { AddAccountModal } from "~/components/dashboard/AddAccountModal";
 import { AddZoneModal } from "~/components/dashboard/AddZoneModal";
 import { AddToListRuleModal } from "~/components/dashboard/AddToListRuleModal";
-import { InviteMemberModal } from "~/components/dashboard/InviteMemberModal";
-import { ConnectedAccounts } from "~/components/dashboard/ConnectedAccounts";
+import { IPsAnalyzer } from "~/components/dashboard/IPsAnalyzer";
+import { Overview } from "~/components/dashboard/Overview";
+import { AuditLogs } from "~/components/dashboard/AuditLogs";
+import { type DateRange } from "~/components/shared/DateRangePicker";
+import { useSearchParams } from "react-router";
 
 
 export const meta: Route.MetaFunction = () => [
@@ -212,22 +212,27 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
   const db = drizzle(env.DB, { schema: { cloudflareAccounts, zoneConfigs, addToListRules, actionLogs } });
 
+  const url = new URL(request.url);
+  const tab = url.searchParams.get("tab") || "overview";
+
   const [accounts, zones, rules, recentAttacks, [{ count: totalBlocks }]] = await Promise.all([
     db.select().from(cloudflareAccounts).where(eq(cloudflareAccounts.tenantId, tenantId)).orderBy(desc(cloudflareAccounts.createdAt)),
     db.select().from(zoneConfigs).where(eq(zoneConfigs.tenantId, tenantId)).orderBy(desc(zoneConfigs.createdAt)),
     db.select().from(addToListRules).where(eq(addToListRules.tenantId, tenantId)).orderBy(desc(addToListRules.createdAt)),
-    db.select().from(actionLogs).where(eq(actionLogs.tenantId, tenantId)).orderBy(desc(actionLogs.blockedAt)).limit(10),
+    db.select().from(actionLogs).where(eq(actionLogs.tenantId, tenantId)).orderBy(desc(actionLogs.blockedAt)).limit(tab === "logs" ? 100 : 10),
     db.select({ count: sql<number>`count(*)` }).from(actionLogs).where(eq(actionLogs.tenantId, tenantId)),
   ]);
 
-  return { user: sessionData.user, orgName: activeOrgName, accounts, zones, rules, recentAttacks, totalBlocks };
+  return { user: sessionData.user, orgName: activeOrgName, accounts, zones, rules, recentAttacks, totalBlocks, currentTab: tab };
 }
 
 export default function DashboardPage({ loaderData }: Route.ComponentProps) {
-  const { orgName, accounts, zones, rules, recentAttacks, totalBlocks } = loaderData as any;
+  const { orgName, accounts, zones, rules, recentAttacks, totalBlocks, currentTab } = loaderData as any;
   const actionData = useActionData() as { error?: string } | null;
   const navigation = useNavigation();
   const revalidator = useRevalidator();
+  const [searchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "overview";
 
   const isAddingAccount = navigation.formData?.get("intent") === "add_account";
   const isAddingZone = navigation.formData?.get("intent") === "add_zone";
@@ -235,100 +240,45 @@ export default function DashboardPage({ loaderData }: Route.ComponentProps) {
 
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isZoneModalOpen, setIsZoneModalOpen] = useState(false);
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [ruleModalZoneId, setRuleModalZoneId] = useState<string | null>(null);
-  const [pollInterval, setPollInterval] = useState<number>(0); // 0 means off
+  const [dateRange, setDateRange] = useState<DateRange>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("flarefilter_daterange");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed.start) parsed.start = new Date(parsed.start);
+          if (parsed.end) parsed.end = new Date(parsed.end);
+          return parsed;
+        } catch (e) {
+          console.error("Failed to parse saved daterange", e);
+        }
+      }
+    }
+    return { type: "relative", relativeValue: "30m", live: false, refreshInterval: 10 };
+  });
 
   useEffect(() => {
-    if (pollInterval === 0) return;
+    localStorage.setItem("flarefilter_daterange", JSON.stringify(dateRange));
+
+    if (!dateRange.live) return;
+
+    const intervalMs = (dateRange.refreshInterval || 10) * 1000;
     const timer = setInterval(() => {
       if (navigation.state === "idle") {
         revalidator.revalidate();
       }
-    }, pollInterval);
+    }, intervalMs);
+
     return () => clearInterval(timer);
-  }, [pollInterval, revalidator, navigation.state]);
+  }, [dateRange, revalidator, navigation.state]);
 
   useEffect(() => { if (!isAddingAccount && navigation.state === "idle") setIsAccountModalOpen(false); }, [isAddingAccount, navigation.state]);
   useEffect(() => { if (!isAddingZone && navigation.state === "idle") setIsZoneModalOpen(false); }, [isAddingZone, navigation.state]);
   useEffect(() => { if (!isAddingRule && navigation.state === "idle") setRuleModalZoneId(null); }, [isAddingRule, navigation.state]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-      <header className="flex flex-col lg:flex-row justify-between items-center lg:items-end mb-10 gap-8">
-        <div className="text-center lg:text-left">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-br from-white to-slate-50 border border-slate-200/60 shadow-sm mb-4 mx-auto lg:mx-0">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.15em]">
-              {orgName}
-            </span>
-          </div>
-          <h1 className="text-5xl font-bold tracking-tight text-slate-950">Dashboard</h1>
-          <p className="text-slate-500 font-semibold mt-2 text-sm max-w-md leading-relaxed mx-auto lg:mx-0">
-            Monitor and manage your edge defenses in real-time.
-          </p>
-        </div>
-
-        <div className="flex flex-row items-center justify-center gap-1.5 w-full lg:w-auto">
-          <div className="flex items-center bg-white border border-slate-200 rounded-xl h-[38px] lg:h-[42px] shadow-sm divide-x divide-slate-100 overflow-hidden min-w-0 flex-1 lg:flex-none">
-            <button
-              onClick={() => revalidator.revalidate()}
-              disabled={revalidator.state === "loading"}
-              className="px-2.5 lg:px-3.5 h-full hover:bg-slate-50 transition-colors disabled:opacity-50 flex items-center justify-center"
-              title="Refresh"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="14" height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={`${revalidator.state === "loading" ? "animate-spin text-indigo-600" : "text-slate-400"}`}
-              >
-                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" /><path d="M16 21v-5h5" />
-              </svg>
-            </button>
-            <div className="relative h-full flex items-center min-w-[50px] lg:min-w-[80px]">
-              <select
-                value={pollInterval}
-                onChange={(e) => setPollInterval(Number(e.target.value))}
-                className="appearance-none bg-transparent h-full w-full pl-2 pr-6 text-[10px] lg:text-[11px] font-bold text-slate-600 focus:outline-none cursor-pointer hover:bg-slate-50 transition-colors text-center"
-              >
-                <option value={0}>OFF</option>
-                <option value={10000}>10s</option>
-                <option value={30000}>30s</option>
-                <option value={60000}>60s</option>
-              </select>
-              <svg className="absolute right-1.5 pointer-events-none text-slate-400" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
-            </div>
-          </div>
-
-          <button
-            onClick={() => setIsInviteModalOpen(true)}
-            className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 bg-white border border-slate-200 text-slate-950 text-xs font-bold px-2.5 lg:px-4 h-[38px] lg:h-[42px] rounded-xl hover:bg-slate-50 transition-all shadow-sm active:scale-95"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
-            </svg>
-            Invite
-          </button>
-
-          <button
-            onClick={() => setIsZoneModalOpen(true)}
-            disabled={accounts.length === 0}
-            className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 bg-slate-950 text-white text-xs font-bold px-3 lg:px-5 h-[38px] lg:h-[42px] rounded-xl hover:bg-black transition-all shadow-lg shadow-slate-200 active:scale-95 disabled:opacity-40"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            Add Zone
-          </button>
-        </div>
-      </header>
+    <div className="pb-8">
 
       {accounts.length === 0 && (
         <div className="mb-8 flex items-center gap-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
@@ -347,29 +297,48 @@ export default function DashboardPage({ loaderData }: Route.ComponentProps) {
         </div>
       )}
 
-      <ConnectedAccounts
-        accounts={accounts}
-        onAdd={() => setIsAccountModalOpen(true)}
-        error={actionData?.error}
-      />
-
-      <MetricsGrid zonesCount={zones.length} totalBlocks={totalBlocks} />
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <ZonesList
-          zones={zones}
+      {activeTab === "overview" && (
+        <Overview
+          orgName={orgName}
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          isLoading={navigation.state !== "idle"}
           accounts={accounts}
+          zones={zones}
           rules={rules}
+          recentAttacks={recentAttacks}
+          totalBlocks={totalBlocks}
+          onAddAccount={() => setIsAccountModalOpen(true)}
           onAddZone={() => setIsZoneModalOpen(true)}
           onAddRule={(zoneId) => setRuleModalZoneId(zoneId)}
+          error={actionData?.error}
         />
-        <RecentBlocks attacks={recentAttacks} />
-      </div>
+      )}
+
+      {activeTab === "ips" && (
+        <IPsAnalyzer
+          zones={zones}
+          accounts={accounts}
+          orgName={orgName}
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          isLoading={navigation.state !== "idle"}
+        />
+      )}
+
+      {activeTab === "logs" && (
+        <AuditLogs
+          orgName={orgName}
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          isLoading={navigation.state !== "idle"}
+          recentAttacks={recentAttacks}
+        />
+      )}
 
       {isAccountModalOpen && <AddAccountModal onClose={() => setIsAccountModalOpen(false)} isSubmitting={isAddingAccount} />}
       {isZoneModalOpen && <AddZoneModal onClose={() => setIsZoneModalOpen(false)} isSubmitting={isAddingZone} accounts={accounts} />}
       {ruleModalZoneId && <AddToListRuleModal onClose={() => setRuleModalZoneId(null)} isSubmitting={isAddingRule} zoneId={ruleModalZoneId} accounts={accounts} zones={zones} />}
-      {isInviteModalOpen && <InviteMemberModal onClose={() => setIsInviteModalOpen(false)} />}
     </div>
   );
 }

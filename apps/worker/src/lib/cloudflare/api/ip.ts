@@ -11,8 +11,17 @@ export class CloudflareIpApi extends CloudflareApiBase {
     threshold: number,
     windowSeconds: number
   ): Promise<{ ip: string; count: number }[]> {
-    const datetimeEnd = new Date().toISOString();
-    const datetimeStart = new Date(Date.now() - windowSeconds * 1000).toISOString();
+    // Analytics ingestion delay means we should look a bit further back
+    // and offset the 'end' time slightly to ensure data has landed in the adaptive groups.
+    const latencyOffset = 60 * 1000; // 1 minute safety buffer
+    const end = Date.now() - latencyOffset;
+    const start = end - (windowSeconds * 1000);
+
+    const datetimeEnd = new Date(end).toISOString().split('.')[0] + 'Z';
+    const datetimeStart = new Date(start).toISOString().split('.')[0] + 'Z';
+
+    console.log(`  Querying Analytics: ${datetimeStart} to ${datetimeEnd} (Threshold: ${threshold})`);
+
     const query = `
             query GetAbusiveIPs(
                 $zoneTag: String!,
@@ -49,6 +58,7 @@ export class CloudflareIpApi extends CloudflareApiBase {
       });
 
       const page = data?.viewer?.zones?.[0]?.httpRequestsAdaptiveGroups ?? [];
+      console.log(`  Cloudflare returned ${page.length} IP groups.`);
 
       for (const g of page) {
         if (g.count > threshold) {

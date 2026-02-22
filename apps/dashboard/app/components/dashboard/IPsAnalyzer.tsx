@@ -1,0 +1,697 @@
+import { useFetcher } from "react-router";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { inputCls, labelCls, glassCls } from "./shared";
+import { DateRangePicker, type DateRange } from "~/components/shared/DateRangePicker";
+
+export function IPsAnalyzer({
+    zones,
+    accounts,
+    orgName,
+    dateRange,
+    onDateRangeChange,
+    isLoading: isGlobalLoading
+}: {
+    zones: any[];
+    accounts: any[];
+    orgName: string;
+    dateRange: DateRange;
+    onDateRangeChange: (v: DateRange) => void;
+    isLoading?: boolean;
+}) {
+    const fetcher = useFetcher();
+    const ipListAddFetcher = useFetcher();
+    const ipListsFetcher = useFetcher();
+    const [selectedZoneId, setSelectedZoneId] = useState(() => typeof window !== "undefined" ? (localStorage.getItem("ff_ips_analyzer_zone") || "") : "");
+    const [limit, setLimit] = useState(() => typeof window !== "undefined" ? Number(localStorage.getItem("ff_ips_analyzer_limit") || 10) : 10);
+    const [dimensions, setDimensions] = useState<string[]>(() => {
+        if (typeof window === "undefined") return ["clientIP"];
+        try {
+            const saved = localStorage.getItem("ff_ips_analyzer_dimensions");
+            if (saved) return JSON.parse(saved);
+        } catch (e) { }
+        return ["clientIP"];
+    });
+    const [results, setResults] = useState<any[]>([]);
+    const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [isDimensionsModalOpen, setIsDimensionsModalOpen] = useState(false);
+    const [isActionDropdownOpen, setIsActionDropdownOpen] = useState(false);
+    const [isIpListAddOpen, setIsIpListAddOpen] = useState(false);
+    const [selectedIpListId, setSelectedIpListId] = useState("");
+    const [availableIpLists, setAvailableIpLists] = useState<any[]>([]);
+    const [ipListAddResult, setIpListAddResult] = useState<{ success?: boolean; added?: number; error?: string } | null>(null);
+    const dimensionsRef = useRef<HTMLDivElement>(null);
+    const actionRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (dimensionsRef.current && !dimensionsRef.current.contains(event.target as Node)) {
+                setIsDimensionsModalOpen(false);
+            }
+            if (actionRef.current && !actionRef.current.contains(event.target as Node)) {
+                setIsActionDropdownOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    // Fetch CF IP lists when the Add IPs to IP List modal opens
+    useEffect(() => {
+        if (!isIpListAddOpen || !selectedZoneId) return;
+        setIpListAddResult(null); // clear previous feedback
+        const zone = zones.find(z => z.id === selectedZoneId);
+        if (!zone) return;
+        const fd = new FormData();
+        fd.append("accountRef", zone.cfAccountRef);
+        fd.append("type", "lists");
+        ipListsFetcher.submit(fd, { method: "post", action: "/api/cloudflare" });
+    }, [isIpListAddOpen, selectedZoneId]);
+
+    useEffect(() => {
+        if (ipListsFetcher.data && Array.isArray(ipListsFetcher.data)) {
+            setAvailableIpLists(ipListsFetcher.data.filter((l: any) => l.kind === "ip"));
+        }
+    }, [ipListsFetcher.data]);
+
+    // Capture result and auto-close on success
+    useEffect(() => {
+        if (!ipListAddFetcher.data) return;
+        setIpListAddResult(ipListAddFetcher.data as any);
+        if ((ipListAddFetcher.data as any)?.success) {
+            setTimeout(() => {
+                setIsIpListAddOpen(false);
+                setSelectedIpListId("");
+                setIsActionDropdownOpen(false);
+                setSelectedItems(new Set());
+                setIpListAddResult(null);
+            }, 1500);
+        }
+    }, [ipListAddFetcher.data]);
+
+    const handleIpListAdd = () => {
+        const zone = zones.find(z => z.id === selectedZoneId);
+        if (!zone || !selectedIpListId) return;
+        const selectedIps = Array.from(selectedItems)
+            .map(i => results[i]?.clientIP)
+            .filter(Boolean)
+            .join(",");
+        if (!selectedIps) return;
+        const fd = new FormData();
+        fd.append("accountRef", zone.cfAccountRef);
+        fd.append("type", "ip-list-add");
+        fd.append("listId", selectedIpListId);
+        fd.append("ips", selectedIps);
+        ipListAddFetcher.submit(fd, { method: "post", action: "/api/cloudflare" });
+    };
+
+    const selectedIps = Array.from(selectedItems).map(i => results[i]?.clientIP).filter(Boolean);
+
+
+
+
+    useEffect(() => {
+        if (selectedZoneId) localStorage.setItem("ff_ips_analyzer_zone", selectedZoneId);
+        localStorage.setItem("ff_ips_analyzer_limit", limit.toString());
+        localStorage.setItem("ff_ips_analyzer_dimensions", JSON.stringify(dimensions));
+    }, [selectedZoneId, limit, dimensions]);
+
+    const windowSeconds = useMemo(() => {
+        if (dateRange.type === "relative") {
+            const val = dateRange.relativeValue || "30m";
+            const num = parseInt(val);
+            const unit = val.slice(-1);
+            if (unit === "m") return num * 60;
+            if (unit === "h") return num * 3600;
+            if (unit === "d") return num * 86400;
+            return 1800;
+        } else if (dateRange.start && dateRange.end) {
+            return Math.floor((dateRange.end.getTime() - dateRange.start.getTime()) / 1000);
+        }
+        return 3600;
+    }, [dateRange]);
+
+    const handleFetch = () => {
+        if (!selectedZoneId) return;
+        const zone = zones.find(v => v.id === selectedZoneId);
+        if (!zone) return;
+
+        const formData = new FormData();
+        formData.append("accountRef", zone.cfAccountRef);
+        formData.append("zoneTag", zone.cfZoneId);
+        formData.append("type", "top-ips");
+        formData.append("dimensions", dimensions.length > 0 ? dimensions.join(",") : "clientIP");
+        formData.append("windowSeconds", windowSeconds.toString());
+        formData.append("limit", limit.toString());
+
+        fetcher.submit(formData, { method: "post", action: "/api/cloudflare" });
+    };
+
+    useEffect(() => {
+        if (!fetcher.data) return;
+        if ((fetcher.data as any).error) {
+            const err = (fetcher.data as any);
+            setResults([]);
+            setSelectedItems(new Set());
+            if (err.details && err.details[0]?.extensions?.code === "authz") {
+                setErrorMsg(`Access Denied: Your Cloudflare plan does not include access to this specific dimension.`);
+            } else {
+                setErrorMsg(err.error || "Failed to fetch top IPs data.");
+            }
+        } else if (Array.isArray(fetcher.data)) {
+            setErrorMsg(null);
+            setResults(fetcher.data);
+            setSelectedItems(new Set());
+        }
+    }, [fetcher.data]);
+
+    const isLoading = fetcher.state !== "idle";
+
+    return (
+        <>
+            <div className="flex flex-col gap-4 sm:gap-6">
+                <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/60 px-3 sm:px-4 py-3 flex flex-row flex-wrap gap-2 items-center w-full">
+
+                    {/* Dimensions */}
+                    <div className="relative shrink-0" ref={dimensionsRef}>
+                        <button
+                            onClick={() => setIsDimensionsModalOpen(!isDimensionsModalOpen)}
+                            className="flex items-center justify-center gap-2 px-3 h-[34px] text-[11px] font-bold bg-white border border-slate-200 rounded-xl shadow-sm text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap"
+                        >
+                            <svg className="w-3.5 h-3.5 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>
+                            </svg>
+                            <span>Dimensions</span>
+                            {dimensions.length > 0 && (
+                                <span className="bg-slate-100 border border-slate-200 text-slate-600 px-1.5 py-0.5 rounded-md text-[9px] font-black tabular-nums">{dimensions.length}</span>
+                            )}
+                        </button>
+                        {isDimensionsModalOpen && (
+                            <div className="absolute top-full mt-2 left-0 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden z-50 flex flex-col p-2 gap-1 animate-in fade-in zoom-in-95 duration-100">
+                                <div className="px-3 py-2 border-b border-slate-100 mb-1">
+                                    <div className="text-[10px] font-black uppercase tracking-widest">Grouping Dimensions</div>
+                                    <div className="text-[9px] font-medium text-slate-800 leading-tight mt-0.5 italic">Select dimensions then click 'Fetch' to update.</div>
+                                </div>
+                                {[
+                                    { id: "clientIP", label: "IP Address", desc: "Source IP address" },
+                                    { id: "clientAsn", label: "ASN Network", desc: "Autonomous System Number", pro: true },
+                                    { id: "clientCountryName", label: "Country", desc: "Geographic Location" },
+                                    { id: "clientRequestPath", label: "Request Path", desc: "URL Route Path" },
+                                    { id: "clientRequestHTTPHost", label: "HTTP Host", desc: "Target Hostname" },
+                                    { id: "clientRequestHTTPMethodName", label: "HTTP Method", desc: "GET, POST, etc." },
+                                    { id: "edgeResponseStatus", label: "HTTP Status", desc: "Response status code" },
+                                    { id: "clientDeviceType", label: "Device Type", desc: "Mobile, Desktop, Tablet" },
+                                    { id: "userAgentBrowser", label: "Browser", desc: "Detected User Agent Browser" },
+                                    { id: "userAgentOS", label: "OS", desc: "Detected Operating System" },
+                                    { id: "clientRefererHost", label: "Referer Host", desc: "Source referer hostname", pro: true },
+                                    { id: "coloCode", label: "Datacenter", desc: "Cloudflare Edge Location", pro: true },
+                                    { id: "clientRequestHTTPProtocol", label: "HTTP Version", desc: "HTTP/1.1, HTTP/2, etc." }
+                                ].map(opt => {
+                                    const isChecked = dimensions.includes(opt.id);
+                                    return (
+                                        <label key={opt.id} className={`flex items-start gap-3 px-3 py-2 border rounded-xl transition-all cursor-pointer ${isChecked ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'border-transparent hover:bg-slate-50'}`}>
+                                            <div className="pt-0.5">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isChecked}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) setDimensions([...dimensions, opt.id]);
+                                                        else setDimensions(dimensions.filter(d => d !== opt.id));
+                                                    }}
+                                                    className="w-4 h-4 rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-600 transition-all cursor-pointer"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col text-left">
+                                                <span className={`flex items-center text-[12px] font-bold ${isChecked ? 'text-indigo-900' : 'text-slate-700'}`}>
+                                                    {opt.label}
+                                                    {opt.pro && (
+                                                        <svg className="w-3 h-3 text-indigo-400 ml-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                                        </svg>
+                                                    )}
+                                                </span>
+                                                <span className={`text-[10px] font-medium leading-tight mt-0.5 ${isChecked ? 'text-indigo-600/70' : 'text-slate-400'}`}>{opt.desc}</span>
+                                            </div>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Zone select */}
+                    <select
+                        value={selectedZoneId}
+                        onChange={(e) => setSelectedZoneId(e.target.value)}
+                        className={`${inputCls} shrink-0 w-auto max-w-[180px] h-[34px] px-2 text-[10px] font-bold bg-white border-slate-200 min-w-[100px] shadow-sm rounded-xl focus:ring-slate-950`}
+                    >
+                        <option value="">Zone...</option>
+                        {zones.map(z => (
+                            <option key={z.id} value={z.id}>{z.name}</option>
+                        ))}
+                    </select>
+
+
+                    {/* Separator */}
+                    <div className="w-px h-6 bg-slate-200 shrink-0" />
+
+                    {/* Date picker */}
+                    <div className="shrink-0">
+                        <DateRangePicker
+                            value={dateRange}
+                            onChange={onDateRangeChange}
+                            isLoading={isGlobalLoading || isLoading}
+                            liveLabel="Live Logs"
+                        />
+                    </div>
+
+                    {/* Selection bar — appears when rows are checked */}
+                    {selectedItems.size > 0 && (
+                        <>
+                            <div className="w-px h-6 bg-slate-200 shrink-0" />
+
+                            <div className="flex items-center gap-2 bg-indigo-50/50 border border-indigo-100/50 py-1 px-3 rounded-xl animate-in fade-in slide-in-from-top-2 duration-300 shrink-0">
+                                {/* Count */}
+                                <span className="bg-white border border-indigo-200 text-indigo-700 text-[11px] font-black px-2 py-0.5 rounded-md tabular-nums shadow-sm select-none">{selectedItems.size}</span>
+                                <span className="text-[12px] font-bold text-indigo-900 select-none">selected</span>
+
+                                <div className="w-px h-5 bg-indigo-200/60" />
+
+                                {/* Action dropdown — styled like Dimensions */}
+                                <div className="relative shrink-0" ref={actionRef}>
+                                    <button
+                                        onClick={() => setIsActionDropdownOpen(!isActionDropdownOpen)}
+                                        className="flex items-center gap-2 px-3 h-[28px] text-[11px] font-bold bg-white border border-indigo-200 hover:border-indigo-300 rounded-lg shadow-sm text-indigo-900 hover:bg-slate-50 transition-colors whitespace-nowrap"
+                                    >
+                                        Action
+                                        <svg className={`w-3 h-3 text-indigo-400 transition-transform ${isActionDropdownOpen ? 'rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
+                                    </button>
+
+                                    {isActionDropdownOpen && (
+                                        <div className="absolute top-full mt-2 left-0 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 z-50 flex flex-col p-2 gap-0.5 animate-in fade-in zoom-in-95 duration-100">
+                                            <div className="px-3 py-2 border-b border-slate-100 mb-1">
+                                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Actions</div>
+                                            </div>
+
+                                            {/* Add IPs to IP List */}
+                                            <button
+                                                onClick={() => { setIsIpListAddOpen(true); setIsActionDropdownOpen(false); }}
+                                                className="flex items-center gap-3 text-left px-3 py-2 rounded-xl transition-all hover:bg-slate-50"
+                                            >
+                                                <div className="w-6 h-6 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
+                                                    <svg className="w-3.5 h-3.5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                                                </div>
+                                                <div>
+                                                    <div className="text-[12px] font-bold text-slate-700">Add IPs to IP List</div>
+                                                    <div className="text-[10px] text-slate-400 font-medium">Push to a Cloudflare IP List</div>
+                                                </div>
+                                            </button>
+
+                                            {/* Firewall Rule — coming soon */}
+                                            <button disabled className="flex items-center gap-3 text-left px-3 py-2 rounded-xl opacity-40 cursor-not-allowed">
+                                                <div className="w-6 h-6 rounded-lg bg-rose-50 flex items-center justify-center shrink-0">
+                                                    <svg className="w-3.5 h-3.5 text-rose-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" /></svg>
+                                                </div>
+                                                <div>
+                                                    <div className="text-[12px] font-bold text-slate-500">Create Firewall Rule <span className="text-[9px] font-black bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded uppercase ml-1">soon</span></div>
+                                                    <div className="text-[10px] text-slate-400 font-medium">Block via WAF rule</div>
+                                                </div>
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <button
+                                    onClick={() => setSelectedItems(new Set())}
+                                    className="text-[10px] font-bold text-indigo-400 hover:text-indigo-600 uppercase tracking-tight transition-colors"
+                                >
+                                    Clear
+                                </button>
+                            </div>
+                        </>
+                    )}
+
+                    {/* Fetch + Limit — right side */}
+                    <div className="flex items-center rounded-xl overflow-hidden border border-slate-900 shadow-sm ml-auto shrink-0">
+                        <button
+                            onClick={handleFetch}
+                            disabled={!selectedZoneId || isLoading}
+                            className="flex items-center justify-center gap-1.5 bg-slate-950 hover:bg-black disabled:opacity-30 disabled:cursor-not-allowed text-white text-[10px] font-bold px-3 h-[34px] transition-colors active:scale-95 whitespace-nowrap"
+                        >
+                            {isLoading ? (
+                                <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                </svg>
+                            ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                                </svg>
+                            )}
+                            Fetch
+                        </button>
+                        <div className="relative bg-slate-50 border-l border-slate-900/10 h-[34px] flex items-center">
+                            <input
+                                type="number"
+                                min={1}
+                                max={100}
+                                value={limit}
+                                onChange={(e) => setLimit(Number(e.target.value))}
+                                className="h-full pl-2.5 pr-8 text-[11px] font-bold bg-transparent border-0 shadow-none [appearance:textfield] focus:ring-0 text-slate-900 focus:outline-none"
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-400 uppercase pointer-events-none">
+                                MAX
+                            </span>
+                        </div>
+                    </div>
+
+                </header>
+
+                {/* Add IPs to IP List Modal */}
+                {isIpListAddOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-150">
+                        <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md animate-in zoom-in-95 duration-200">
+
+                            {/* Modal header */}
+                            <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-slate-100">
+                                <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                                </div>
+                                <div>
+                                    <h3 className="text-[14px] font-black text-slate-900">Add IPs to IP List</h3>
+                                    <p className="text-[11px] text-slate-400 font-medium">Push selected IPs into a Cloudflare IP List</p>
+                                </div>
+                                <button onClick={() => { setIsIpListAddOpen(false); setSelectedIpListId(""); }} className="ml-auto text-slate-400 hover:text-slate-600 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                                </button>
+                            </div>
+
+                            <div className="px-5 py-4 space-y-4">
+
+                                {/* Selected IPs preview */}
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">IPs to add ({selectedIps.length})</p>
+                                    {selectedItems.size > selectedIps.length && (
+                                        <p className="mb-2 text-[10px] text-amber-600 font-bold bg-amber-50 border border-amber-100 px-2 py-1.5 rounded-lg">
+                                            ⚠ {selectedItems.size - selectedIps.length} selected row(s) have no <code className="bg-amber-100 px-1 rounded">clientIP</code> and will be skipped. Make sure <strong>clientIP</strong> is an active dimension.
+                                        </p>
+                                    )}
+                                    <div className="flex flex-wrap gap-1.5 p-3 bg-slate-50 border border-slate-200 rounded-xl max-h-28 overflow-y-auto">
+                                        {selectedIps.length > 0 ? selectedIps.map(ip => (
+                                            <span key={ip} className="font-mono text-[11px] font-bold bg-white border border-slate-200 text-slate-800 px-2 py-0.5 rounded-lg shadow-sm">{ip}</span>
+                                        )) : (
+                                            <span className="text-[11px] text-amber-600 font-medium italic">No rows with a <code className="bg-amber-50 px-1 rounded">clientIP</code> dimension are selected.</span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* CF IP List selector */}
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Target Cloudflare IP List</label>
+                                    {ipListsFetcher.state === "submitting" ? (
+                                        <div className="flex items-center gap-2 h-[36px] text-[12px] text-slate-400 font-medium">
+                                            <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                                            Fetching IP Lists from Cloudflare...
+                                        </div>
+                                    ) : (
+                                        <select
+                                            value={selectedIpListId}
+                                            onChange={e => setSelectedIpListId(e.target.value)}
+                                            className="w-full h-[36px] px-3 text-[12px] font-bold bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                        >
+                                            <option value="">{availableIpLists.length === 0 ? "No IP lists found" : "Select an IP list..."}</option>
+                                            {availableIpLists.map((l: any) => (
+                                                <option key={l.id} value={l.id}>{l.name} ({l.id.slice(0, 8)}…)</option>
+                                            ))}
+                                        </select>
+                                    )}
+                                    {availableIpLists.length === 0 && ipListsFetcher.state === "idle" && (
+                                        <p className="mt-1.5 text-[10px] text-rose-500 font-medium italic">No IP lists found. Go to Cloudflare → Account → Lists to create one.</p>
+                                    )}
+                                </div>
+
+                                {/* Error */}
+                                {ipListAddResult?.error && (
+                                    <p className="text-[11px] text-rose-600 font-bold bg-rose-50 border border-rose-100 px-3 py-2 rounded-xl">⚠ {ipListAddResult.error}</p>
+                                )}
+
+                                {/* Success */}
+                                {ipListAddResult?.success && (
+                                    <p className="text-[11px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-100 px-3 py-2 rounded-xl">✓ {ipListAddResult.added} IP(s) added successfully!</p>
+                                )}
+                            </div>
+
+                            {/* Footer */}
+                            <div className="px-5 pb-5 flex items-center justify-end gap-2">
+                                <button
+                                    onClick={() => { setIsIpListAddOpen(false); setSelectedIpListId(""); }}
+                                    className="px-4 py-2 text-[12px] font-bold text-slate-500 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleIpListAdd}
+                                    disabled={!selectedIpListId || selectedIps.length === 0 || ipListAddFetcher.state === "submitting"}
+                                    className="flex items-center gap-2 px-4 py-2 text-[12px] font-bold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl transition-colors shadow-sm"
+                                >
+                                    {ipListAddFetcher.state === "submitting" ? (
+                                        <><svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Adding...</>
+                                    ) : (
+                                        <>Add {selectedIps.length} IP{selectedIps.length !== 1 ? "s" : ""} to List</>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+
+
+                <div className="w-full flex-1 flex flex-col">
+                    <div className="flex-1 min-h-[500px] w-full">
+                        {errorMsg ? (
+                            <div className="h-full flex flex-col items-center justify-center p-12 text-center">
+                                <div className="w-16 h-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center mb-6 border border-red-100 shadow-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-lg font-bold text-slate-900 mb-2">Data Fetch Failed</h3>
+                                <p className="text-sm text-slate-500 max-w-md bg-white border border-slate-200 p-4 rounded-xl shadow-sm italic break-words">{errorMsg}</p>
+                                <button
+                                    onClick={() => setErrorMsg(null)}
+                                    className="mt-6 text-[11px] font-bold text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg transition-colors uppercase tracking-tight"
+                                >
+                                    Dismiss
+                                </button>
+                            </div>
+                        ) : results.length === 0 ? (
+                            <div className="h-full flex flex-col items-center justify-center py-32 px-12 text-center group">
+                                <div className="w-24 h-24 rounded-[2rem] bg-slate-50 border border-slate-100 flex items-center justify-center mb-8 transition-all group-hover:scale-110 duration-500 shadow-sm relative">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-300">
+                                        <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+                                    </svg>
+                                    <div className="absolute inset-0 bg-indigo-500/5 rounded-[2rem] animate-pulse" />
+                                </div>
+                                <h3 className="text-xl font-bold text-slate-900 uppercase tracking-tight italic">No insights yet</h3>
+                                <p className="text-sm text-slate-500 mt-3 max-w-[320px] font-medium leading-relaxed">
+                                    Pick a dimension (IPs, Paths, etc.) and hit <span className="text-indigo-600 font-bold underline decoration-indigo-200 underline-offset-4 tracking-tighter uppercase">Fetch Data</span> to reveal traffic patterns.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="relative overflow-x-auto custom-scrollbar bg-white border border-slate-200 shadow-sm ">
+                                <table className="w-full min-w-max text-left border-collapse">
+                                    <thead className="bg-slate-50/95 backdrop-blur-sm border-b border-slate-100 sticky top-0 z-20">
+                                        <tr>
+                                            <th className="px-6 py-5 text-center w-12">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={results.length > 0 && selectedItems.size === results.length}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setSelectedItems(new Set(results.map((_, i) => i)));
+                                                        } else {
+                                                            setSelectedItems(new Set());
+                                                        }
+                                                    }}
+                                                    className="w-4 h-4 rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-600 transition-all cursor-pointer"
+                                                />
+                                            </th>
+                                            <th className="px-4 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest w-20 text-center">Rank</th>
+
+                                            {(dimensions.length > 0 ? dimensions : ["clientIP"]).map(dim => {
+                                                const labels: Record<string, string> = {
+                                                    clientIP: "IP Address",
+                                                    clientAsn: "ASN Network",
+                                                    clientCountryName: "Country",
+                                                    clientRequestPath: "Request Path",
+                                                    clientDeviceType: "Device Type",
+                                                    clientRequestHTTPHost: "HTTP Host",
+                                                    clientRequestHTTPMethodName: "Method",
+                                                    edgeResponseStatus: "Status",
+                                                    userAgentBrowser: "Browser",
+                                                    userAgentOS: "OS",
+                                                    clientRefererHost: "Referer",
+                                                    coloCode: "DC",
+                                                    clientRequestHTTPProtocol: "Protocol"
+                                                };
+                                                return (
+                                                    <th key={dim} className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                                                        {labels[dim] || dim}
+                                                    </th>
+                                                );
+                                            })}
+
+                                            <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Event Count</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {results.map((r, i) => {
+                                            const isSelected = selectedItems.has(i);
+                                            return (
+                                                <tr
+                                                    key={i}
+                                                    onClick={() => {
+                                                        const newSet = new Set(selectedItems);
+                                                        if (newSet.has(i)) newSet.delete(i);
+                                                        else newSet.add(i);
+                                                        setSelectedItems(newSet);
+                                                    }}
+                                                    className={`transition-all group cursor-pointer ${isSelected ? 'bg-indigo-50/40' : 'hover:bg-slate-50/80'}`}
+                                                >
+                                                    <td className="px-6 py-5 text-center" onClick={(e) => e.stopPropagation()}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isSelected}
+                                                            onChange={(e) => {
+                                                                const newSet = new Set(selectedItems);
+                                                                if (e.target.checked) newSet.add(i);
+                                                                else newSet.delete(i);
+                                                                setSelectedItems(newSet);
+                                                            }}
+                                                            className="w-4 h-4 rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-600 transition-all cursor-pointer"
+                                                        />
+                                                    </td>
+                                                    <td className="px-4 py-5 text-xs font-black text-slate-300 group-hover:text-slate-500 text-center">
+                                                        #{i + 1}
+                                                    </td>
+                                                    {(dimensions.length > 0 ? dimensions : ["clientIP"]).map(dim => {
+                                                        if (dim === "clientIP") {
+                                                            return (
+                                                                <td key={dim} className="px-8 py-5">
+                                                                    <span className="font-mono text-xs font-bold text-slate-900 bg-white border border-slate-200 px-4 py-1.5 rounded-xl shadow-sm group-hover:border-indigo-400 group-hover:shadow-md group-hover:shadow-indigo-500/5 transition-all whitespace-nowrap">
+                                                                        {r[dim] || "Unknown"}
+                                                                    </span>
+                                                                </td>
+                                                            );
+                                                        }
+                                                        if (dim === "clientAsn") {
+                                                            return (
+                                                                <td key={dim} className="px-8 py-5">
+                                                                    <span className="text-[11px] font-black text-slate-700 uppercase tracking-tight whitespace-nowrap">
+                                                                        AS{r[dim] || "N/A"}
+                                                                    </span>
+                                                                </td>
+                                                            );
+                                                        }
+                                                        if (dim === "clientCountryName") {
+                                                            return (
+                                                                <td key={dim} className="px-8 py-5">
+                                                                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 group-hover:bg-white transition-colors uppercase tracking-tight whitespace-nowrap">
+                                                                        {r[dim] || "Global"}
+                                                                    </span>
+                                                                </td>
+                                                            );
+                                                        }
+                                                        if (dim === "clientRequestPath") {
+                                                            return (
+                                                                <td key={dim} className="px-8 py-5">
+                                                                    <span className="text-xs font-black text-slate-700 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 font-mono truncate max-w-[200px] inline-block align-bottom">
+                                                                        {r[dim] || "Unknown"}
+                                                                    </span>
+                                                                </td>
+                                                            );
+                                                        }
+                                                        if (dim === "clientDeviceType") {
+                                                            return (
+                                                                <td key={dim} className="px-8 py-5">
+                                                                    <span className="text-[10px] font-bold text-slate-600 bg-white px-3 py-1.5 rounded-lg border border-slate-100 italic truncate max-w-[150px] uppercase inline-block align-bottom">
+                                                                        {r[dim] || "Unknown"}
+                                                                    </span>
+                                                                </td>
+                                                            );
+                                                        }
+                                                        if (dim === "clientRequestHTTPHost") {
+                                                            return (
+                                                                <td key={dim} className="px-8 py-5">
+                                                                    <span className="text-xs font-bold text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-lg italic">
+                                                                        {r[dim] || "Unknown"}
+                                                                    </span>
+                                                                </td>
+                                                            );
+                                                        }
+                                                        if (dim === "edgeResponseStatus") {
+                                                            const status = r[dim];
+                                                            const color = status >= 500 ? "text-rose-600 bg-rose-50 border-rose-100" :
+                                                                status >= 400 ? "text-orange-600 bg-orange-50 border-orange-100" :
+                                                                    status >= 300 ? "text-indigo-600 bg-indigo-50 border-indigo-100" :
+                                                                        "text-emerald-600 bg-emerald-50 border-emerald-100";
+                                                            return (
+                                                                <td key={dim} className="px-8 py-5">
+                                                                    <span className={`text-[10px] font-black px-2 py-1 rounded-md border tabular-nums ${color}`}>
+                                                                        {status || "???"}
+                                                                    </span>
+                                                                </td>
+                                                            );
+                                                        }
+                                                        if (dim === "clientRequestHTTPMethodName") {
+                                                            return (
+                                                                <td key={dim} className="px-8 py-5">
+                                                                    <span className="text-[10px] font-black text-slate-500 bg-slate-100 px-2 py-1 rounded-md border border-slate-200 uppercase">
+                                                                        {r[dim] || "????"}
+                                                                    </span>
+                                                                </td>
+                                                            );
+                                                        }
+                                                        if (dim === "coloCode") {
+                                                            return (
+                                                                <td key={dim} className="px-8 py-5">
+                                                                    <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50/50 px-2 py-1 rounded-md border border-indigo-100 tracking-widest">
+                                                                        {r[dim] || "???"}
+                                                                    </span>
+                                                                </td>
+                                                            );
+                                                        }
+                                                        if (dim === "userAgentBrowser" || dim === "userAgentOS") {
+                                                            return (
+                                                                <td key={dim} className="px-8 py-5">
+                                                                    <span className="text-[10px] font-medium text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded-md">
+                                                                        {r[dim] || "Unknown"}
+                                                                    </span>
+                                                                </td>
+                                                            );
+                                                        }
+                                                        return <td key={dim} className="px-8 py-5 text-xs text-slate-500 font-medium truncate max-w-[150px]">{r[dim] || "N/A"}</td>;
+                                                    })}
+                                                    <td className="px-8 py-5 text-right">
+                                                        <div className="inline-flex flex-col items-end">
+                                                            <span className="text-[13px] font-black tabular-nums tracking-tight bg-gradient-to-br from-indigo-900 to-slate-800 bg-clip-text text-transparent">
+                                                                {r.count.toLocaleString()}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div >
+
+
+        </>
+    );
+}

@@ -21,20 +21,35 @@ export class AddToListRule implements RuleHandler {
             }
 
             console.log(`  Found ${flaggedIPs.length} flagged IPs. Processing actions...`);
+            let blockedCount = 0;
 
             // 2. Insert to List and Audit Log
             for (const { ip, count } of flaggedIPs) {
-                const cfListItemId = await cf.ips.addToList(rule.cfListId, ip);
+                try {
+                    const cfListItemId = await cf.ips.addToList(rule.cfListId, ip);
 
-                await audit.logAction({
-                    tenantId: zone.tenantId,
-                    zoneConfigId: zone.id,
-                    ruleId: rule.id,
-                    actionTaken: 'IP_BLOCKED',
-                    ip,
-                    requestCount: count,
-                    metadata: JSON.stringify({ cfListId: rule.cfListId, cfListItemId }),
-                });
+                    await audit.logAction({
+                        tenantId: zone.tenantId,
+                        zoneConfigId: zone.id,
+                        ruleId: rule.id,
+                        actionTaken: 'IP_BLOCKED',
+                        ip,
+                        requestCount: count,
+                        metadata: JSON.stringify({ cfListId: rule.cfListId, cfListItemId }),
+                    });
+                    blockedCount++;
+                } catch (err: any) {
+                    // Check if it's a "duplicate" error, which we can ignore
+                    if (err.message.includes('duplicate') || err.message.includes('already exists')) {
+                        console.log(`  IP ${ip} is already blocked. Skipping.`);
+                    } else {
+                        console.error(`  Failed to block IP ${ip}:`, err.message);
+                    }
+                }
+            }
+
+            if (blockedCount > 0) {
+                console.log(`  Successfully blocked ${blockedCount} new IPs.`);
             }
         } catch (err) {
             console.error(`  Error processing AddToList rule ${rule.id} on zone ${zone.name}:`, err);

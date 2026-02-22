@@ -11,8 +11,12 @@ import type { Route } from "./+types/root";
 import "./app.css";
 import { Header } from "~/components/Header";
 import { Footer } from "~/components/Footer";
+import { Sidebar } from "~/components/Sidebar";
+import { useState } from "react";
+import { useLocation } from "react-router";
 
 export const meta: Route.MetaFunction = () => [
+  // ... existing meta ...
   { title: "FlareFilter - Automated Cloudflare IP Protection" },
   { name: "description", content: "FlareFilter automatically detects and blocks abusive IP addresses on Cloudflare using real-time analytics. Protect your zones without lifting a finger." },
   { name: "theme-color", content: "#4f46e5" },
@@ -62,8 +66,27 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const location = useLocation();
+
+  const isDashboardLayout = location.pathname.startsWith("/dashboard") || location.pathname.startsWith("/settings");
+
+  if (isDashboardLayout) {
+    return (
+      <div className="h-screen flex overflow-hidden bg-slate-50 text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900">
+        <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <Header onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+          <main className="flex-1 overflow-y-auto bg-slate-50/50">
+            <Outlet />
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-slate-200 selection:text-slate-900 flex flex-col">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col">
       <Header />
       <main className="flex-1">
         <Outlet />
