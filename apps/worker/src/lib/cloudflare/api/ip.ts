@@ -13,15 +13,12 @@ export class CloudflareIpApi extends CloudflareApiBase {
   ): Promise<{ ip: string; count: number }[]> {
     const datetimeEnd = new Date().toISOString();
     const datetimeStart = new Date(Date.now() - windowSeconds * 1000).toISOString();
-    const PAGE_SIZE = 1000;
-
     const query = `
             query GetAbusiveIPs(
                 $zoneTag: String!,
                 $datetimeStart: String!,
                 $datetimeEnd: String!,
-                $limit: Int!,
-                $offset: Int!
+                $limit: Int!
             ) {
               viewer {
                 zones(filter: { zoneTag: $zoneTag }) {
@@ -31,7 +28,6 @@ export class CloudflareIpApi extends CloudflareApiBase {
                       datetime_leq: $datetimeEnd,
                     }
                     limit: $limit
-                    offset: $offset
                     orderBy: [count_DESC]
                   ) {
                     count
@@ -43,34 +39,21 @@ export class CloudflareIpApi extends CloudflareApiBase {
         `;
 
     const allGroups: { ip: string; count: number }[] = [];
-    let offset = 0;
 
     try {
-      while (true) {
-        const data = await this.fetchGraphQL(query, {
-          zoneTag: cfZoneId,
-          datetimeStart,
-          datetimeEnd,
-          limit: PAGE_SIZE,
-          offset,
-        });
+      const data = await this.fetchGraphQL(query, {
+        zoneTag: cfZoneId,
+        datetimeStart,
+        datetimeEnd,
+        limit: 10000,
+      });
 
-        const page = data?.viewer?.zones?.[0]?.httpRequestsAdaptiveGroups ?? [];
+      const page = data?.viewer?.zones?.[0]?.httpRequestsAdaptiveGroups ?? [];
 
-        for (const g of page) {
-          if (g.count > threshold) {
-            allGroups.push({ ip: g.dimensions.clientIP, count: g.count });
-          }
+      for (const g of page) {
+        if (g.count > threshold) {
+          allGroups.push({ ip: g.dimensions.clientIP, count: g.count });
         }
-
-        // Results are ordered count_DESC, so if we hit an entry below
-        // the threshold there's no point fetching further pages.
-        const hitThresholdFloor = page.some((g: any) => g.count <= threshold);
-        if (page.length < PAGE_SIZE || hitThresholdFloor) {
-          break;
-        }
-
-        offset += PAGE_SIZE;
       }
     } catch (err) {
       console.error(`Failed to query Abusive IPs for zone ${cfZoneId}:`, err);

@@ -13,5 +13,14 @@
       "database_id": "08d3a032-70b5-4541-93f3-2dac72079d3b",
       "migrations_dir": "../../packages/db/migrations"
     }
-  ]
+  ],
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": true
+    }
+  }
 }

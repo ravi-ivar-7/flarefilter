@@ -16,3 +16,11 @@ migrations_dir = "../../packages/db/migrations"
 [[kv_namespaces]]
 binding = "BLOCKLIST"
 id = "5d2ee0304b234b50a2aa0ea58e6c7f88"
+
+[observability]
+[observability.logs]
+enabled = true
+invocation_logs = true
+
+[observability.traces]
+enabled = true
