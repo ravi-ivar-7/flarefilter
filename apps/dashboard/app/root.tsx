@@ -69,7 +69,7 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
 
-  const isDashboardLayout = location.pathname.startsWith("/dashboard") || location.pathname.startsWith("/settings");
+  const isDashboardLayout = location.pathname.startsWith("/dashboard");
 
   if (isDashboardLayout) {
     return (

@@ -22,11 +22,9 @@ export function Header({ onToggleSidebar }: HeaderProps) {
     const orgRef = useRef<HTMLDivElement>(null);
 
     const isHome = location.pathname === "/";
-    const isDashboard = location.pathname === "/dashboard";
-    const isDashboardPath = location.pathname.startsWith("/dashboard") || location.pathname.startsWith("/settings");
-
-    const searchParams = new URLSearchParams(location.search);
-    const activeTab = searchParams.get("tab") || "overview";
+    const isDashboard = location.pathname.startsWith("/dashboard");
+    const isDashboardPath = location.pathname.startsWith("/dashboard");
+    const activeTab = location.pathname.split("/")[2] || "overview";
 
     let pageTitle = "";
     let pageSubtext = "";
@@ -41,10 +39,10 @@ export function Header({ onToggleSidebar }: HeaderProps) {
         } else if (activeTab === "logs") {
             pageTitle = "Audit Logs";
             pageSubtext = "Complete history of all mitigations and security actions.";
+        } else if (activeTab === "profile") {
+            pageTitle = "Profile";
+            pageSubtext = "Manage your organization and account preferences.";
         }
-    } else if (location.pathname.startsWith("/settings")) {
-        pageTitle = "Settings";
-        pageSubtext = "Manage your organization and account preferences.";
     }
 
     const handleSignOut = async () => {
@@ -343,6 +341,10 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                                                     icon={<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="9" x="3" y="3" rx="1" /><rect width="7" height="5" x="14" y="3" rx="1" /><rect width="7" height="9" x="14" y="12" rx="1" /><rect width="7" height="5" x="3" y="16" rx="1" /></svg>}
                                                     onClick={() => { navigate("/dashboard"); setIsUserOpen(false); }}
                                                 >Dashboard</DropdownItem>
+                                                <DropdownItem
+                                                    icon={<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>}
+                                                    onClick={() => { navigate("/dashboard/profile"); setIsUserOpen(false); }}
+                                                >Profile</DropdownItem>
                                                 <DropdownItem
                                                     icon={<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>}
                                                     onClick={handleSignOut}

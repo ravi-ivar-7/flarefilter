@@ -12,6 +12,7 @@ import { AddToListRuleModal } from "~/components/dashboard/AddToListRuleModal";
 import { IPsAnalyzer } from "~/components/dashboard/IPsAnalyzer";
 import { Overview } from "~/components/dashboard/Overview";
 import { AuditLogs } from "~/components/dashboard/AuditLogs";
+import { Profile } from "~/components/dashboard/Profile";
 import { type DateRange } from "~/components/shared/DateRangePicker";
 import { useSearchParams } from "react-router";
 
@@ -180,7 +181,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   return null;
 }
 
-export async function loader({ request, context }: Route.LoaderArgs) {
+export async function loader({ request, context, params }: Route.LoaderArgs) {
   const env = context.cloudflare.env;
   if (!env.DB) throw new Error("D1 binding 'DB' not configured.");
 
@@ -188,32 +189,35 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const sessionData = await auth.api.getSession({ headers: request.headers });
   if (!sessionData?.user) throw redirect("/auth?mode=login");
 
+  const orgs = await auth.api.listOrganizations({ headers: request.headers });
   let tenantId = sessionData.session.activeOrganizationId;
-  let activeOrgName = "Personal Workspace";
+  let activeOrg: any = null;
 
   if (!tenantId) {
-    const orgs = await auth.api.listOrganizations({ headers: request.headers });
     if (orgs.length > 0) {
       tenantId = orgs[0].id;
-      activeOrgName = orgs[0].name;
+      activeOrg = orgs[0];
     } else {
       const newOrg = await auth.api.createOrganization({
         headers: request.headers,
         body: { name: `${sessionData.user.name}'s Organization`, slug: crypto.randomUUID() },
       });
       tenantId = newOrg!.id;
-      activeOrgName = newOrg!.name;
+      activeOrg = newOrg;
+      // Note: orgs might need to be refreshed or we just add this one
     }
   } else {
-    const orgs = await auth.api.listOrganizations({ headers: request.headers });
-    const active = orgs.find((o: any) => o.id === tenantId);
-    if (active) activeOrgName = active.name;
+    activeOrg = orgs.find((o: any) => o.id === tenantId);
   }
+
+  // Ensure orgs includes the newly created one if applicable
+  const allOrgs = orgs.length > 0 ? orgs : (activeOrg ? [activeOrg] : []);
+
+  const orgName = activeOrg?.name || "Default Organization";
 
   const db = drizzle(env.DB, { schema: { cloudflareAccounts, zoneConfigs, addToListRules, actionLogs } });
 
-  const url = new URL(request.url);
-  const tab = url.searchParams.get("tab") || "overview";
+  const tab = params.tab || "overview";
 
   const [accounts, zones, rules, recentAttacks, [{ count: totalBlocks }]] = await Promise.all([
     db.select().from(cloudflareAccounts).where(eq(cloudflareAccounts.tenantId, tenantId)).orderBy(desc(cloudflareAccounts.createdAt)),
@@ -223,16 +227,16 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     db.select({ count: sql<number>`count(*)` }).from(actionLogs).where(eq(actionLogs.tenantId, tenantId)),
   ]);
 
-  return { user: sessionData.user, orgName: activeOrgName, accounts, zones, rules, recentAttacks, totalBlocks, currentTab: tab };
+  return { user: sessionData.user, orgName, activeOrg, orgs: allOrgs, accounts, zones, rules, recentAttacks, totalBlocks, currentTab: tab };
 }
 
-export default function DashboardPage({ loaderData }: Route.ComponentProps) {
-  const { orgName, accounts, zones, rules, recentAttacks, totalBlocks, currentTab } = loaderData as any;
+export default function DashboardPage({ loaderData, params }: Route.ComponentProps) {
+  const { user, orgName, activeOrg, orgs, accounts, zones, rules, recentAttacks, totalBlocks } = loaderData as any;
+  const currentTab = params.tab || "overview";
   const actionData = useActionData() as { error?: string } | null;
   const navigation = useNavigation();
   const revalidator = useRevalidator();
-  const [searchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") || "overview";
+  const activeTab = currentTab;
 
   const isAddingAccount = navigation.formData?.get("intent") === "add_account";
   const isAddingZone = navigation.formData?.get("intent") === "add_zone";
@@ -335,6 +339,10 @@ export default function DashboardPage({ loaderData }: Route.ComponentProps) {
           isLoading={navigation.state !== "idle"}
           recentAttacks={recentAttacks}
         />
+      )}
+
+      {activeTab === "profile" && (
+        <Profile user={user} activeOrg={activeOrg} orgs={orgs} />
       )}
 
       {isAccountModalOpen && <AddAccountModal onClose={() => setIsAccountModalOpen(false)} isSubmitting={isAddingAccount} />}

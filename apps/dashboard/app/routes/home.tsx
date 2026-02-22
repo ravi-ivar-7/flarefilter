@@ -134,7 +134,7 @@ export default function LandingPage() {
       <section className="bg-slate-900 text-white w-full py-20">
         <div className="max-w-[1280px] mx-auto px-6 text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to secure your edge network?</h2>
-          <p className="text-lg text-slate-400 mb-8 max-w-2xl mx-auto">Create an organization workspace and link your Cloudflare account to deploy automated protection.</p>
+          <p className="text-lg text-slate-400 mb-8 max-w-2xl mx-auto">Create an organization and link your Cloudflare account to deploy automated protection.</p>
           <Link
             to={session?.user ? "/dashboard" : "/auth?mode=register"}
             className="inline-flex items-center justify-center px-8 py-4 text-base font-bold text-slate-900 bg-white hover:bg-slate-100 rounded shadow-sm transition-colors"
