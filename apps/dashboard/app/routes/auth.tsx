@@ -1,14 +1,13 @@
 import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { authClient } from '~/lib/auth-client';
 import type { Route } from './+types/auth';
+import { Logo } from '~/components/Logo';
 
 export const meta: Route.MetaFunction = () => [
     { title: "Sign In - FlareFilter" },
     { name: "description", content: "Sign in to your FlareFilter dashboard to manage Cloudflare zones, configure blocking rules, and monitor IP activity." },
 ];
-
-
 
 export default function LoginPage() {
     const navigate = useNavigate();
@@ -16,6 +15,7 @@ export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
+    const [orgName, setOrgName] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [isSignUp, setIsSignUp] = useState(searchParams.get("mode") === "register");
@@ -36,66 +36,102 @@ export default function LoginPage() {
         };
 
         if (isSignUp) {
-            await authClient.signUp.email({ email, password, name: name || 'Admin' }, callback);
+            await authClient.signUp.email({ email, password, name }, {
+                onSuccess: async () => {
+                    if (orgName) {
+                        try {
+                            const newOrg = await authClient.organization.create({
+                                name: orgName,
+                                slug: orgName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || crypto.randomUUID()
+                            });
+                            if (newOrg.data?.id) {
+                                await authClient.organization.setActive({ organizationId: newOrg.data.id });
+                            }
+                        } catch (e) {
+                            console.error("Failed to create org", e);
+                        }
+                    }
+                    callback.onSuccess();
+                },
+                onError: callback.onError
+            });
         } else {
             await authClient.signIn.email({ email, password }, callback);
         }
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-900 overflow-hidden relative selection:bg-indigo-500/30">
-            <div className="absolute top-[-10%] inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-indigo-200/50 via-gray-50 to-gray-50 -z-10 animate-pulse" style={{ animationDuration: '8s' }} />
-            <div className="absolute top-[20%] right-[10%] w-[30rem] h-[30rem] bg-indigo-600/10 blur-[120px] rounded-full -z-10" />
-            <div className="absolute bottom-[10%] left-[10%] w-[25rem] h-[25rem] bg-violet-600/10 blur-[100px] rounded-full -z-10" />
-
-            <div className="w-full max-w-md relative">
-                <div className="absolute -inset-[1px] bg-gradient-to-b from-indigo-500/20 to-white/5 rounded-2xl z-0" />
-                <div className="relative bg-white/80 backdrop-blur-xl border border-gray-200 shadow-2xl rounded-2xl p-8 z-10">
-
+        <div className="flex flex-col items-center justify-center bg-slate-50 text-slate-900 font-sans selection:bg-slate-200 selection:text-slate-900 w-full px-4 py-10 relative z-0">
+            <div className="w-full max-w-[400px] relative z-10">
+                <div className="mb-6 flex justify-center">
+                    <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+                        Return to Home
+                    </Link>
+                </div>
+                <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-8 sm:p-10 mb-6">
                     <div className="flex flex-col items-center mb-8">
-                        <div className="w-12 h-12 bg-gradient-to-tr from-indigo-500 space-y-1 to-violet-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 mb-4 ring-1 ring-gray-900/5">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="M12 8v4" /><path d="M12 16h.01" /></svg>
+                        <div className="mb-5">
+                            <Logo variant="icon" size={48} animate={false} />
                         </div>
-                        <h1 className="text-3xl font-semibold tracking-tight text-gray-900">FlareFilter</h1>
-                        <p className="text-sm text-gray-600 mt-2">{isSignUp ? 'Create your admin account' : 'Sign in to manage your Edge defenses'}</p>
+                        <h1 className="text-2xl font-black tracking-tight text-slate-900">
+                            {isSignUp ? 'Create Organization' : 'Welcome back'}
+                        </h1>
+                        <p className="text-sm font-medium text-slate-500 mt-2 text-center text-balance">
+                            {isSignUp ? 'Set up your admin account to get started.' : 'Sign in to manage your Edge defenses.'}
+                        </p>
                     </div>
 
                     <form className="space-y-4" onSubmit={handleAuth}>
                         {error && (
-                            <div className="bg-rose-50 border border-rose-200 text-rose-600 text-sm px-4 py-3 rounded-xl mb-4 text-center">
+                            <div className="bg-rose-50 border border-rose-200 text-rose-600 text-sm font-semibold px-4 py-3 rounded-xl mb-4 text-center">
                                 {error}
                             </div>
                         )}
 
                         {isSignUp && (
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-medium text-gray-700 ml-1">Full Name</label>
-                                <input
-                                    type="text"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    placeholder="Admin User"
-                                    required
-                                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-300 shadow-sm"
-                                />
-                            </div>
+                            <>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Full Name</label>
+                                    <input
+                                        type="text"
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
+                                        placeholder="Admin User"
+                                        required
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 focus:bg-white transition-all duration-200"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Organization Name</label>
+                                    <input
+                                        type="text"
+                                        value={orgName}
+                                        onChange={(e) => setOrgName(e.target.value)}
+                                        placeholder="Acme Corp"
+                                        required
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 focus:bg-white transition-all duration-200"
+                                    />
+                                </div>
+                            </>
                         )}
 
                         <div className="space-y-1.5">
-                            <label className="text-sm font-medium text-gray-700 ml-1">Email address</label>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Email address</label>
                             <input
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                placeholder="admin@company.com"
+                                placeholder="name@company.com"
                                 required
-                                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-300 shadow-sm"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 focus:bg-white transition-all duration-200"
                             />
                         </div>
+
                         <div className="space-y-1.5">
-                            <div className="flex justify-between items-center ml-1">
-                                <label className="text-sm font-medium text-gray-700">Password</label>
-                                <a href="#" className="text-xs text-indigo-600 hover:text-indigo-500 transition-colors">Forgot password?</a>
+                            <div className="flex justify-between items-center">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Password</label>
+                                {!isSignUp && <a href="#" className="text-xs font-semibold text-slate-400 hover:text-slate-900 transition-colors">Forgot?</a>}
                             </div>
                             <input
                                 type="password"
@@ -103,28 +139,34 @@ export default function LoginPage() {
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="••••••••"
                                 required
-                                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-300 shadow-sm"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 focus:bg-white transition-all duration-200"
                             />
                         </div>
 
                         <button
                             type="submit"
                             disabled={loading}
-                            className="mt-6 w-full bg-gray-900 text-white font-semibold rounded-xl px-4 py-3 hover:bg-gray-800 transition-all duration-300 active:scale-[0.98] shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
+                            className="mt-6 w-full bg-slate-900 text-white text-sm font-semibold rounded-xl px-4 py-3 hover:bg-black transition-all duration-200 active:scale-[0.98] shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
                         >
                             {loading ? (
                                 <>
-                                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                     Authenticating...
                                 </>
-                            ) : (isSignUp ? "Create Account" : "Sign In to Dashboard")}
+                            ) : (isSignUp ? "Create Organization" : "Sign In")}
                         </button>
                     </form>
-
-                    <p className="mt-6 text-center text-sm text-gray-500">
-                        {isSignUp ? "Already have an account?" : "Need an account?"} <button onClick={() => setIsSignUp(!isSignUp)} className="text-indigo-600 hover:text-indigo-500 font-medium underline transition-colors">{isSignUp ? "Sign In" : "Sign Up"}</button>
-                    </p>
                 </div>
+
+                <p className="text-center text-sm font-medium text-slate-500">
+                    {isSignUp ? "Already have an account?" : "No account yet?"}{" "}
+                    <button
+                        onClick={() => setIsSignUp(!isSignUp)}
+                        className="text-slate-900 font-bold hover:underline transition-colors ml-1"
+                    >
+                        {isSignUp ? "Sign In" : "Sign Up"}
+                    </button>
+                </p>
             </div>
         </div>
     );

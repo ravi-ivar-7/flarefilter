@@ -1,78 +1,149 @@
 import { Link } from "react-router";
+import { authClient } from "~/lib/auth-client";
 import type { Route } from "./+types/home";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "FlareFilter - Automated Cloudflare IP Protection" },
-  { name: "description", content: "FlareFilter automatically detects and blocks abusive IP addresses on Cloudflare. Set thresholds, let the worker run, and stay protected 24/7." },
+  { title: "FlareFilter | Automated Cloudflare Security" },
+  { name: "description", content: "Stop DDoS attacks at the edge. FlareFilter automates your Cloudflare firewall rules, providing dynamic rate limiting and intelligent bot detection." },
 ];
 
 export default function LandingPage() {
+  const { data: session } = authClient.useSession();
+
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col selection:bg-indigo-500/30">
-      <div className="fixed top-[-10%] inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-indigo-200/50 via-gray-50 to-gray-50 -z-10 animate-pulse" style={{ animationDuration: '8s' }} />
-      <div className="absolute top-[20%] right-[10%] w-[30rem] h-[30rem] bg-indigo-600/10 blur-[120px] rounded-full -z-10" />
-      <div className="absolute top-[40%] left-[10%] w-[25rem] h-[25rem] bg-violet-600/10 blur-[100px] rounded-full -z-10" />
+    <div className="bg-white text-slate-800 font-sans selection:bg-orange-100 selection:text-orange-900 w-full min-h-screen">
 
-
-      <main className="flex-1 flex flex-col items-center justify-center text-center px-4 max-w-4xl mx-auto relative z-10 pt-20 pb-32">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-sm text-indigo-600 mb-8 self-center">
-          <span className="flex h-2 w-2 relative">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-          </span>
-          Next-Generation Edge Protection
-        </div>
-
-        <h1 className="text-6xl md:text-7xl font-bold tracking-tighter mb-8 bg-gradient-to-b from-gray-900 to-gray-600 bg-clip-text text-transparent">
-          Secure your applications at the absolute edge.
-        </h1>
-
-        <p className="text-xl text-gray-600 mb-12 max-w-2xl leading-relaxed">
-          FlareFilter provides real-time, AI-driven traffic filtering and rate limiting directly on Cloudflare's global network. Stop attacks before they even reach your servers.
-        </p>
-
-        <div className="flex sm:flex-row flex-col gap-4">
-          <Link to="/login" className="bg-gray-900 text-white text-lg font-semibold px-8 py-4 rounded-xl hover:bg-gray-800 transition-all duration-300 active:scale-95 shadow-xl flex items-center justify-center gap-2">
-            Get Started
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
-          </Link>
-          <a href="#features" className="bg-white border border-gray-200 text-gray-900 text-lg font-medium px-8 py-4 rounded-xl hover:border-gray-300 transition-all duration-300 shadow-sm">
-            View Features
-          </a>
-        </div>
-      </main>
-
-      <section id="features" className="px-8 py-24 bg-white border-t border-gray-200 relative z-10">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-8">
-          <div className="p-8 rounded-2xl bg-gray-50 border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all">
-            <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-xl flex items-center justify-center mb-6 border border-rose-200">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+      {/* Hero Section */}
+      <section className="bg-slate-50 border-b border-slate-200 w-full">
+        <div className="max-w-[1280px] mx-auto px-6 pt-24 pb-32 grid lg:grid-cols-2 gap-12 items-center">
+          <div className="space-y-8 max-w-2xl">
+            <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight text-slate-900 leading-[1.15]">
+              Stop DDoS attacks before they hit your infrastructure.
+            </h1>
+            <p className="text-xl text-slate-600 font-normal leading-relaxed">
+              FlareFilter connects directly to your Cloudflare account to provide automated IP blocking and dynamic rate limiting. Keep malicious traffic off your origin servers without manual intervention.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+              <Link
+                to={session?.user ? "/dashboard" : "/auth?mode=register"}
+                className="inline-flex items-center justify-center px-6 py-3.5 text-[15px] font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded shadow-sm transition-colors text-center w-full sm:w-auto"
+              >
+                {session?.user ? "Go to dashboard" : "Start filtering traffic"}
+              </Link>
+              <a
+                href="#how-it-works"
+                className="inline-flex items-center justify-center px-6 py-3.5 text-[15px] font-semibold text-slate-800 bg-white border border-slate-300 hover:bg-slate-50 hover:border-slate-400 rounded shadow-sm transition-colors text-center w-full sm:w-auto"
+              >
+                How it works
+              </a>
             </div>
-            <h3 className="text-xl font-semibold mb-3 text-gray-900">Instant Threat Blocking</h3>
-            <p className="text-gray-600 leading-relaxed">Automatically detects and drops malicious traffic using advanced heuristic patterns at the CDN layer.</p>
+            <div className="pt-2">
+              <p className="text-sm font-medium text-slate-500 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-green-600">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+                </svg>
+                Installs in minutes. Built on Cloudflare Workers.
+              </p>
+            </div>
           </div>
 
-          <div className="p-8 rounded-2xl bg-gray-50 border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all">
-            <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center mb-6 border border-indigo-200">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+          <div className="hidden lg:block relative justify-self-end w-full max-w-[500px]">
+            {/* Minimalist technical illustration / abstract dashboard mockup */}
+            <div className="bg-white border border-slate-200 shadow-xl rounded-md overflow-hidden flex flex-col h-[400px]">
+              <div className="h-10 bg-slate-100 border-b border-slate-200 flex items-center px-4 gap-2">
+                <div className="flex gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-slate-300"></div>
+                  <div className="w-3 h-3 rounded-full bg-slate-300"></div>
+                  <div className="w-3 h-3 rounded-full bg-slate-300"></div>
+                </div>
+                <div className="mx-auto w-48 h-5 bg-white border border-slate-200 rounded"></div>
+              </div>
+              <div className="p-6 flex-1 flex flex-col gap-4">
+                <div className="flex justify-between items-end pb-4 border-b border-slate-100">
+                  <div className="space-y-2">
+                    <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active Threats Mitigated</div>
+                    <div className="text-3xl font-bold text-slate-900">142,509</div>
+                  </div>
+                  <div className="px-2.5 py-1 bg-green-100 text-green-800 text-xs font-bold rounded-sm">LIVE</div>
+                </div>
+                <div className="flex-1 rounded border border-slate-100 bg-slate-50 flex items-center justify-center p-4">
+                  <div className="w-full space-y-3">
+                    <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden flex">
+                      <div className="h-full bg-blue-500 w-[70%]"></div>
+                      <div className="h-full bg-orange-500 w-[15%]"></div>
+                      <div className="h-full bg-red-500 w-[5%]"></div>
+                    </div>
+                    <div className="flex justify-between text-xs font-medium text-slate-500">
+                      <span>Clean traffic</span>
+                      <span>Rate limited</span>
+                      <span>Blocked</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-8 rounded bg-slate-100 border border-slate-200 w-full flex items-center px-3">
+                    <span className="text-xs font-mono text-slate-600">BLOCK IP 192.168.1.x [Threat Score  40]</span>
+                  </div>
+                  <div className="h-8 rounded bg-slate-100 border border-slate-200 w-full flex items-center px-3">
+                    <span className="text-xs font-mono text-slate-600">CHALLENGE ASN 13335 [Rate  100/min]</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <h3 className="text-xl font-semibold mb-3 text-gray-900">Smart Rate Limiting</h3>
-            <p className="text-gray-600 leading-relaxed">Dynamic rate limits that adapt to your traffic spikes while aggressively penalizing known bad actors.</p>
-          </div>
-
-          <div className="p-8 rounded-2xl bg-gray-50 border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all">
-            <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center mb-6 border border-emerald-200">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2v6h-6" /><path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M3 22v-6h6" /><path d="M21 12a9 9 0 0 1-15 6.7L3 16" /></svg>
-            </div>
-            <h3 className="text-xl font-semibold mb-3 text-gray-900">Real-time Analytics</h3>
-            <p className="text-gray-600 leading-relaxed">Watch attacks get mitigated live. Our dashboard streams D1 log events instantly so you're always in control.</p>
           </div>
         </div>
       </section>
 
-      <footer className="px-8 py-8 border-t border-gray-200 text-center text-sm text-gray-500 bg-gray-50 relative z-10">
-        © {new Date().getFullYear()} FlareFilter Edge Protection. All rights reserved.
-      </footer>
+      {/* Features Outline */}
+      <section id="how-it-works" className="py-24 w-full">
+        <div className="max-w-[1280px] mx-auto px-6">
+          <div className="max-w-3xl mb-16">
+            <h2 className="text-3xl font-bold text-slate-900 mb-6">Designed for enterprise-scale reliability.</h2>
+            <p className="text-lg text-slate-600">Our suite of tools ensures your web properties remain fast and available, dropping bad traffic at the Cloudflare network layer before it reaches your web servers.</p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-x-8 gap-y-12 border-t border-slate-200 pt-16">
+            <div className="space-y-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+              <h3 className="text-xl font-bold text-slate-900">Automated WAF Rules</h3>
+              <p className="text-slate-600 leading-relaxed">
+                Configure threshold-based rules that automatically deploy native Cloudflare firewall entries. We detect abusive patterns, update your WAF, and remove expired blocks dynamically.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+              <h3 className="text-xl font-bold text-slate-900">Live Traffic Analytics</h3>
+              <p className="text-slate-600 leading-relaxed">
+                Access streamlined, actionable insights from your Cloudflare logs. Quickly pinpoint volumetric attacks, find the top attacking ASNs, and deploy countermeasures with one click.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+              <h3 className="text-xl font-bold text-slate-900">Custom Rate Limiting</h3>
+              <p className="text-slate-600 leading-relaxed">
+                Set granular request throttling specifically tailored to your API and web endpoints. Identify application-level scraping attempts without penalizing legitimate users.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="bg-slate-900 text-white w-full py-20">
+        <div className="max-w-[1280px] mx-auto px-6 text-center">
+          <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to secure your edge network?</h2>
+          <p className="text-lg text-slate-400 mb-8 max-w-2xl mx-auto">Create an organization workspace and link your Cloudflare account to deploy automated protection.</p>
+          <Link
+            to={session?.user ? "/dashboard" : "/auth?mode=register"}
+            className="inline-flex items-center justify-center px-8 py-4 text-base font-bold text-slate-900 bg-white hover:bg-slate-100 rounded shadow-sm transition-colors"
+          >
+            {session?.user ? "Go to dashboard" : "Create your account"}
+          </Link>
+        </div>
+      </section>
+
     </div>
   );
 }

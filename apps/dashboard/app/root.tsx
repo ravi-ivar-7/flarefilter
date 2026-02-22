@@ -10,6 +10,7 @@ import {
 import type { Route } from "./+types/root";
 import "./app.css";
 import { Header } from "~/components/Header";
+import { Footer } from "~/components/Footer";
 
 export const meta: Route.MetaFunction = () => [
   { title: "FlareFilter - Automated Cloudflare IP Protection" },
@@ -62,11 +63,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans selection:bg-indigo-500/30 flex flex-col">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-slate-200 selection:text-slate-900 flex flex-col">
       <Header />
       <main className="flex-1">
         <Outlet />
       </main>
+      <Footer />
     </div>
   );
 }
