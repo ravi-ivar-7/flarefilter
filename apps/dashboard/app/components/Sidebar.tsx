@@ -42,7 +42,7 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 className={[
                     "transition-all duration-300 ease-in-out flex flex-col",
                     isCollapsed ? "md:w-20" : "md:w-72",
-                    "md:sticky md:top-0 md:h-screen md:flex md:flex-shrink-0 md:translate-x-0 md:shadow-none md:z-20",
+                    "md:sticky md:top-0 md:h-screen md:flex md:flex-shrink-0 md:translate-x-0 md:shadow-none md:z-0",
                     "fixed top-0 bottom-0 left-0 z-50 w-72",
                     "bg-white border-r border-slate-200",
                     isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0",

@@ -179,6 +179,7 @@ export function AuditLogs({
                         onChange={onDateRangeChange}
                         isLoading={isFetching}
                         liveLabel="Live Logs"
+                        align="left"
                     />
                 </div>
 

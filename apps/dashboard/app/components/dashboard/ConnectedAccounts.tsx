@@ -8,15 +8,15 @@ export function ConnectedAccounts({ accounts, onAdd, error }: {
     if (accounts.length === 0) return null;
 
     return (
-        <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-                <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.15em]">
+        <div>
+            <div className="flex items-center justify-between mb-4 px-1">
+                <h2 className="font-semibold">
                     Connected Cloudflare Accounts
                 </h2>
             </div>
 
             {error && (
-                <div className="mb-4 flex items-start gap-2 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-bold shadow-sm">
+                <div className="mb-4 flex items-start gap-2 p-3 bg-rose-50 border border-rose-200 rounded-md text-xs text-rose-700 font-bold shadow-sm">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 flex-shrink-0">
                         <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
                     </svg>
@@ -28,7 +28,7 @@ export function ConnectedAccounts({ accounts, onAdd, error }: {
                 {accounts.map((account: any) => (
                     <div
                         key={account.id}
-                        className="flex items-center bg-gradient-to-br from-white to-indigo-50/50 border border-indigo-100 rounded-2xl shadow-sm overflow-hidden"
+                        className="flex items-center bg-gradient-to-br from-white to-indigo-50/50 border border-indigo-100 rounded-md shadow-sm overflow-hidden"
                     >
                         <div className="flex items-center gap-3 px-4 py-2.5">
                             <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)] flex-shrink-0" />
@@ -60,7 +60,7 @@ export function ConnectedAccounts({ accounts, onAdd, error }: {
 
                 <button
                     onClick={onAdd}
-                    className="flex items-center gap-1.5 px-4 h-[42px] rounded-2xl text-xs font-black uppercase tracking-widest text-indigo-600 border-2 border-dashed border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50 transition-all active:scale-95"
+                    className="flex items-center gap-1.5 px-4 h-[42px] rounded-md text-xs font-black uppercase tracking-widest text-indigo-600 border-2 border-dashed border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50 transition-all active:scale-95"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />

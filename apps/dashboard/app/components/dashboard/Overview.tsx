@@ -36,53 +36,61 @@ export function Overview({
     error
 }: OverviewProps) {
     return (
-        <>
-            <header className="sticky top-0 z-30 flex items-center justify-end bg-white/95 backdrop-blur-md border-b border-slate-200/60 -mx-6 px-4 sm:px-6 py-3 sm:py-4 mb-8">
-                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
-                    <div className="w-full sm:w-auto min-w-[220px]">
-                        <DateRangePicker
-                            value={dateRange}
-                            onChange={onDateRangeChange}
-                            isLoading={isLoading}
-                            liveLabel="Live Logs"
-                        />
-                    </div>
-                    <div className="hidden sm:block w-px h-6 bg-slate-200 flex-shrink-0" />
-                    <button
-                        onClick={onAddZone}
-                        disabled={accounts.length === 0}
-                        className="flex items-center justify-center gap-2 bg-slate-950 text-white text-[11px] font-bold px-4 h-[38px] rounded-xl hover:bg-black transition-all shadow-sm active:scale-95 disabled:opacity-30 whitespace-nowrap"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                        </svg>
-                        Add Zone
-                    </button>
+        <div className="flex flex-col gap-4 sm:gap-6">
+            <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/60 px-3 sm:px-4 py-3 flex flex-row flex-wrap gap-2 items-center w-full">
+
+                {/* Main controls (pushed left) */}
+                <div className="shrink-0 flex items-center">
+                    <DateRangePicker
+                        value={dateRange}
+                        onChange={onDateRangeChange}
+                        isLoading={isLoading}
+                        liveLabel="Live Logs"
+                        align="left"
+                    />
                 </div>
+
+                {/* Add Zone (Push to right) */}
+                <button
+                    onClick={onAddZone}
+                    disabled={accounts.length === 0}
+                    className="ml-auto flex items-center justify-center gap-1.5 bg-slate-950 text-white text-[10px] font-bold px-3 h-[34px] rounded-md hover:bg-black transition-all shadow-sm active:scale-95 disabled:opacity-30 whitespace-nowrap"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    Add Zone
+                </button>
             </header>
 
-            <ConnectedAccounts
-                accounts={accounts}
-                onAdd={onAddAccount}
-                error={error}
-            />
-
-            <MetricsGrid
-                zonesCount={zones.length}
-                totalBlocks={totalBlocks}
-                activeRulesCount={rules.filter((r: any) => r.isActive).length}
-            />
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <ZonesList
-                    zones={zones}
+            <div className="px-3 sm:px-4 flex flex-col gap-6 w-full pb-8">
+                <ConnectedAccounts
                     accounts={accounts}
-                    rules={rules}
-                    onAddZone={onAddZone}
-                    onAddRule={onAddRule}
+                    onAdd={onAddAccount}
+                    error={error}
                 />
-                <RecentBlocks attacks={recentAttacks} />
+
+                <MetricsGrid
+                    zonesCount={zones.length}
+                    totalBlocks={totalBlocks}
+                    activeRulesCount={rules.filter((r: any) => r.isActive).length}
+                />
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <ZonesList
+                        zones={zones}
+                        accounts={accounts}
+                        rules={rules}
+                        onAddZone={onAddZone}
+                        onAddRule={onAddRule}
+                    />
+                    <div className="relative w-full h-full min-h-[400px]">
+                        <div className="absolute inset-0">
+                            <RecentBlocks attacks={recentAttacks} />
+                        </div>
+                    </div>
+                </div>
             </div>
-        </>
+        </div>
     );
 }
