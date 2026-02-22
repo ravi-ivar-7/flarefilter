@@ -16,6 +16,11 @@ import { InviteMemberModal } from "~/components/dashboard/InviteMemberModal";
 import { ConnectedAccounts } from "~/components/dashboard/ConnectedAccounts";
 
 
+export const meta: Route.MetaFunction = () => [
+  { title: "Dashboard - FlareFilter" },
+  { name: "description", content: "Monitor your Cloudflare zones, manage IP blocking rules, and review recent threat activity - all in one place." },
+];
+
 export async function action({ request, context }: Route.ActionArgs) {
   const env = context.cloudflare.env;
   if (!env.DB) throw new Error("D1 binding 'DB' not configured.");

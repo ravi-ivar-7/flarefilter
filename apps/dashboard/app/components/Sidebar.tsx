@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router";
 import { useState, useEffect } from "react";
+import { Logo } from "~/components/Logo";
 
 interface SidebarProps {
     isOpen: boolean;
@@ -46,13 +47,13 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 ].join(" ")}
             >
                 <div className={`flex items-center justify-between px-5 h-[64px] border-b border-slate-200/50 flex-shrink-0 overflow-hidden ${isCollapsed ? "justify-center" : ""}`}>
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-100 flex-shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                            </svg>
-                        </div>
-                        {!isCollapsed && <span className="text-sm font-bold text-black truncate transition-all duration-300">FlareFilter</span>}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <Logo variant="icon" size={36} animate={false} className="flex-shrink-0" />
+                        {!isCollapsed && (
+                            <span className="text-2xl font-bold truncate">
+                                FlareFilter
+                            </span>
+                        )}
                     </div>
                     <button
                         onClick={() => setIsOpen(false)}

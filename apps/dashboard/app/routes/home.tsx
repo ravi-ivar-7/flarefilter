@@ -1,4 +1,10 @@
 import { Link } from "react-router";
+import type { Route } from "./+types/home";
+
+export const meta: Route.MetaFunction = () => [
+  { title: "FlareFilter - Automated Cloudflare IP Protection" },
+  { name: "description", content: "FlareFilter automatically detects and blocks abusive IP addresses on Cloudflare. Set thresholds, let the worker run, and stay protected 24/7." },
+];
 
 export default function LandingPage() {
   return (

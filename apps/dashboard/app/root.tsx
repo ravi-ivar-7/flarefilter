@@ -15,17 +15,35 @@ import { Header } from "~/components/Header";
 import { Sidebar } from "~/components/Sidebar";
 import { authClient } from "~/lib/auth-client";
 
+export const meta: Route.MetaFunction = () => [
+  { title: "FlareFilter - Automated Cloudflare IP Protection" },
+  { name: "description", content: "FlareFilter automatically detects and blocks abusive IP addresses on Cloudflare using real-time analytics. Protect your zones without lifting a finger." },
+  { name: "theme-color", content: "#4f46e5" },
+  { property: "og:type", content: "website" },
+  { property: "og:site_name", content: "FlareFilter" },
+  { property: "og:title", content: "FlareFilter - Automated Cloudflare IP Protection" },
+  { property: "og:description", content: "Detect and block abusive IPs on Cloudflare automatically. Real-time analytics, configurable thresholds, and zero manual intervention." },
+  { property: "og:image", content: "/welcome/og-image.png" },
+  { name: "robots", content: "noindex, nofollow" }, // dashboard is private
+];
+
 export const links: Route.LinksFunction = () => [
+  // Fonts
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
-  {
-    rel: "preconnect",
-    href: "https://fonts.gstatic.com",
-    crossOrigin: "anonymous",
-  },
-  {
-    rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
-  },
+  { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+  { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" },
+
+  // Favicons
+  { rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
+  { rel: "icon", type: "image/png", sizes: "16x16", href: "/welcome/favicon-16x16.png" },
+  { rel: "icon", type: "image/png", sizes: "32x32", href: "/welcome/favicon-32x32.png" },
+  { rel: "icon", type: "image/png", sizes: "48x48", href: "/welcome/favicon-48x48.png" },
+
+  // Apple / iOS
+  { rel: "apple-touch-icon", sizes: "180x180", href: "/welcome/apple-touch-icon.png" },
+
+  // Web manifest (Android, PWA)
+  { rel: "manifest", href: "/welcome/site.webmanifest" },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {

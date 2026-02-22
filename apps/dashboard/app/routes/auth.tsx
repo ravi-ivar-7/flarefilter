@@ -1,6 +1,14 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { authClient } from '~/lib/auth-client';
+import type { Route } from './+types/auth';
+
+export const meta: Route.MetaFunction = () => [
+    { title: "Sign In - FlareFilter" },
+    { name: "description", content: "Sign in to your FlareFilter dashboard to manage Cloudflare zones, configure blocking rules, and monitor IP activity." },
+];
+
+
 
 export default function LoginPage() {
     const navigate = useNavigate();
