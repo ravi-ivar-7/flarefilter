@@ -20,16 +20,15 @@ export const zoneConfigs = sqliteTable('zone_configs', {
     cfAccountRef: text('cf_account_ref').notNull().references(() => cloudflareAccounts.id),
     name: text('name').notNull(),
     cfZoneId: text('cf_zone_id').notNull(),
-    pollingIntervalMinutes: integer('polling_interval_minutes').default(5),
     isActive: integer('is_active', { mode: 'boolean' }).default(true),
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
 
-// ─── Add-to-list rules ─────────────────────────────────────────────────────────
+// ─── Add IP to list rules ─────────────────────────────────────────────────────────
 // Rule: when an IP exceeds the threshold in the window, add it to a CF IP List.
 // Detection config (threshold, window) lives here because it is specific to this rule.
-export const addToListRules = sqliteTable('add_to_list_rules', {
+export const addIpToListRules = sqliteTable('add_ip_to_list_rules', {
     id: text('id').primaryKey(),
     zoneConfigId: text('zone_config_id').notNull().references(() => zoneConfigs.id),
     tenantId: text('tenant_id').notNull().references(() => organization.id),
@@ -49,10 +48,11 @@ export const actionLogs = sqliteTable('action_logs', {
     zoneConfigId: text('zone_config_id').notNull().references(() => zoneConfigs.id),
     ruleId: text('rule_id').notNull(), // Polymorphic: no foreign key to a specific rule table
     actionTaken: text('action_taken').notNull(), // 'IP_BLOCKED', 'JS_CHALLENGE', etc.
-    ip: text('ip').notNull(),
+    targetType: text('target_type').notNull(), // e.g. 'IP', 'ASN', 'COUNTRY'
+    targetValue: text('target_value').notNull(), // e.g. '192.168.1.1', 'AS15169'
     requestCount: integer('request_count').notNull(),
     metadata: text('metadata'), // JSON string containing rule-specific rollback needs (e.g. cfListId, cfListItemId)
-    blockedAt: integer('blocked_at', { mode: 'timestamp' }).notNull(),
+    timestamp: integer('timestamp', { mode: 'timestamp' }).notNull(),
 });
 
 // ─── Request activity (raw feed for future log-based analysis) ─────────────────

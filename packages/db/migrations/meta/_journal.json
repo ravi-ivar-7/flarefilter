@@ -8,6 +8,20 @@
       "when": 1771721138936,
       "tag": "0000_eager_ben_urich",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1771888061422,
+      "tag": "0001_useful_spiral",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1771890446561,
+      "tag": "0002_ordinary_shriek",
+      "breakpoints": true
     }
   ]
 }

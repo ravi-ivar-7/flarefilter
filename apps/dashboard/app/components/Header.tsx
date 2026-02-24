@@ -37,7 +37,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
             pageTitle = "IPs Analyzer";
             pageSubtext = "Analyze traffic patterns by IP, country, ASN and more. Take action on selected results.";
         } else if (activeTab === "logs") {
-            pageTitle = "Audit Logs";
+            pageTitle = "Action Logs";
             pageSubtext = "Complete history of all mitigations and security actions.";
         } else if (activeTab === "profile") {
             pageTitle = "Profile";

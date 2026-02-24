@@ -1,18 +1,18 @@
 import { drizzle } from "drizzle-orm/d1";
-import { cloudflareAccounts, zoneConfigs, addToListRules, actionLogs, requestActivity } from "@flarefilter/db/src/schema/zones";
+import { cloudflareAccounts, zoneConfigs, addIpToListRules, actionLogs, requestActivity } from "@flarefilter/db/src/schema/zones";
 import { desc, eq, sql, and } from "drizzle-orm";
 import type { Route } from "./+types/dashboard";
 import { useNavigation, useActionData, useRevalidator, redirect } from "react-router";
 import { getAuth } from "~/lib/auth";
 import { useState, useEffect } from "react";
 
-import { AddAccountModal } from "~/components/dashboard/AddAccountModal";
-import { AddZoneModal } from "~/components/dashboard/AddZoneModal";
-import { AddToListRuleModal } from "~/components/dashboard/AddToListRuleModal";
-import { IPsAnalyzer } from "~/components/dashboard/IPsAnalyzer";
-import { Overview } from "~/components/dashboard/Overview";
-import { AuditLogs } from "~/components/dashboard/AuditLogs";
-import { Profile } from "~/components/dashboard/Profile";
+import { AddAccountModal } from "~/components/dashboard/modals/AddAccountModal";
+import { AddZoneModal } from "~/components/dashboard/modals/AddZoneModal";
+import { AddIpToListRuleModal } from "~/components/dashboard/modals/rules/AddIpToListRuleModal";
+import { IPsAnalyzer } from "~/components/dashboard/views/IPsAnalyzer";
+import { Overview } from "~/components/dashboard/views/Overview";
+import { ActionLogs } from "~/components/dashboard/views/ActionLogs";
+import { Profile } from "~/components/dashboard/views/Profile";
 import { type DateRange } from "~/components/shared/DateRangePicker";
 import { useSearchParams } from "react-router";
 
@@ -82,25 +82,23 @@ export async function action({ request, context }: Route.ActionArgs) {
     const name = formData.get("name") as string;
     const cfZoneId = formData.get("cfZoneId") as string;
     const cfAccountRef = formData.get("cfAccountRef") as string;
-    const pollingIntervalMinutes = parseInt(formData.get("pollingIntervalMinutes") as string) || 5;
     if (name && cfZoneId && cfAccountRef) {
       await db.insert(zoneConfigs).values({
         id: crypto.randomUUID(), tenantId, cfAccountRef, name, cfZoneId,
-        pollingIntervalMinutes,
         createdAt: new Date(), updatedAt: new Date(),
       });
     }
     return null;
   }
 
-  if (intent === "add_to_list_rule") {
+  if (intent === "add_ip_to_list_rule") {
     const zoneConfigId = formData.get("zoneConfigId") as string;
     const cfListId = formData.get("cfListId") as string;
     const cfListName = formData.get("cfListName") as string;
     const rateLimitThreshold = parseInt(formData.get("rateLimitThreshold") as string) || 10000;
     const windowSeconds = parseInt(formData.get("windowSeconds") as string) || 300;
     if (zoneConfigId && cfListId) {
-      await db.insert(addToListRules).values({
+      await db.insert(addIpToListRules).values({
         id: crypto.randomUUID(), tenantId, zoneConfigId, cfListId, cfListName,
         rateLimitThreshold, windowSeconds,
         createdAt: new Date(), updatedAt: new Date(),
@@ -131,7 +129,7 @@ export async function action({ request, context }: Route.ActionArgs) {
       // Manual cascade delete
       await db.delete(actionLogs).where(eq(actionLogs.zoneConfigId, zoneId));
       await db.delete(requestActivity).where(eq(requestActivity.zoneConfigId, zoneId));
-      await db.delete(addToListRules).where(eq(addToListRules.zoneConfigId, zoneId));
+      await db.delete(addIpToListRules).where(eq(addIpToListRules.zoneConfigId, zoneId));
       await db.delete(zoneConfigs).where(
         and(eq(zoneConfigs.id, zoneId), eq(zoneConfigs.tenantId, tenantId))
       );
@@ -143,8 +141,8 @@ export async function action({ request, context }: Route.ActionArgs) {
     const ruleId = formData.get("ruleId") as string;
     if (ruleId) {
       await db.delete(actionLogs).where(eq(actionLogs.ruleId, ruleId));
-      await db.delete(addToListRules).where(
-        and(eq(addToListRules.id, ruleId), eq(addToListRules.tenantId, tenantId))
+      await db.delete(addIpToListRules).where(
+        and(eq(addIpToListRules.id, ruleId), eq(addIpToListRules.tenantId, tenantId))
       );
     }
     return null;
@@ -160,9 +158,9 @@ export async function action({ request, context }: Route.ActionArgs) {
         .where(and(eq(zoneConfigs.id, zoneId), eq(zoneConfigs.tenantId, tenantId)));
 
       // 2. Cascade the status to all rules in this zone
-      await db.update(addToListRules)
+      await db.update(addIpToListRules)
         .set({ isActive, updatedAt: new Date() })
-        .where(and(eq(addToListRules.zoneConfigId, zoneId), eq(addToListRules.tenantId, tenantId)));
+        .where(and(eq(addIpToListRules.zoneConfigId, zoneId), eq(addIpToListRules.tenantId, tenantId)));
     }
     return null;
   }
@@ -171,9 +169,9 @@ export async function action({ request, context }: Route.ActionArgs) {
     const ruleId = formData.get("ruleId") as string;
     const isActive = formData.get("isActive") === "true";
     if (ruleId) {
-      await db.update(addToListRules)
+      await db.update(addIpToListRules)
         .set({ isActive, updatedAt: new Date() })
-        .where(and(eq(addToListRules.id, ruleId), eq(addToListRules.tenantId, tenantId)));
+        .where(and(eq(addIpToListRules.id, ruleId), eq(addIpToListRules.tenantId, tenantId)));
     }
     return null;
   }
@@ -215,23 +213,23 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 
   const orgName = activeOrg?.name || "Default Organization";
 
-  const db = drizzle(env.DB, { schema: { cloudflareAccounts, zoneConfigs, addToListRules, actionLogs } });
+  const db = drizzle(env.DB, { schema: { cloudflareAccounts, zoneConfigs, addIpToListRules, actionLogs } });
 
   const tab = params.tab || "overview";
 
-  const [accounts, zones, rules, recentAttacks, [{ count: totalBlocks }]] = await Promise.all([
+  const [accounts, zones, rules, recentActions, [{ count: totalBlocks }]] = await Promise.all([
     db.select().from(cloudflareAccounts).where(eq(cloudflareAccounts.tenantId, tenantId)).orderBy(desc(cloudflareAccounts.createdAt)),
     db.select().from(zoneConfigs).where(eq(zoneConfigs.tenantId, tenantId)).orderBy(desc(zoneConfigs.createdAt)),
-    db.select().from(addToListRules).where(eq(addToListRules.tenantId, tenantId)).orderBy(desc(addToListRules.createdAt)),
-    db.select().from(actionLogs).where(eq(actionLogs.tenantId, tenantId)).orderBy(desc(actionLogs.blockedAt)).limit(tab === "logs" ? 100 : 10),
+    db.select().from(addIpToListRules).where(eq(addIpToListRules.tenantId, tenantId)).orderBy(desc(addIpToListRules.createdAt)),
+    db.select().from(actionLogs).where(eq(actionLogs.tenantId, tenantId)).orderBy(desc(actionLogs.timestamp)).limit(tab === "logs" ? 100 : 10),
     db.select({ count: sql<number>`count(*)` }).from(actionLogs).where(eq(actionLogs.tenantId, tenantId)),
   ]);
 
-  return { user: sessionData.user, orgName, activeOrg, orgs: allOrgs, accounts, zones, rules, recentAttacks, totalBlocks, currentTab: tab };
+  return { user: sessionData.user, orgName, activeOrg, orgs: allOrgs, accounts, zones, rules, recentActions, totalBlocks, currentTab: tab };
 }
 
 export default function DashboardPage({ loaderData, params }: Route.ComponentProps) {
-  const { user, orgName, activeOrg, orgs, accounts, zones, rules, recentAttacks, totalBlocks } = loaderData as any;
+  const { user, orgName, activeOrg, orgs, accounts, zones, rules, recentActions, totalBlocks } = loaderData as any;
   const currentTab = params.tab || "overview";
   const actionData = useActionData() as { error?: string } | null;
   const navigation = useNavigation();
@@ -240,7 +238,7 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
 
   const isAddingAccount = navigation.formData?.get("intent") === "add_account";
   const isAddingZone = navigation.formData?.get("intent") === "add_zone";
-  const isAddingRule = navigation.formData?.get("intent") === "add_to_list_rule";
+  const isAddingRule = navigation.formData?.get("intent") === "add_ip_to_list_rule";
 
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isZoneModalOpen, setIsZoneModalOpen] = useState(false);
@@ -310,11 +308,11 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
           accounts={accounts}
           zones={zones}
           rules={rules}
-          recentAttacks={recentAttacks}
+          recentActions={recentActions}
           totalBlocks={totalBlocks}
           onAddAccount={() => setIsAccountModalOpen(true)}
           onAddZone={() => setIsZoneModalOpen(true)}
-          onAddRule={(zoneId) => setRuleModalZoneId(zoneId)}
+          onAddRule={(zoneId: string) => setRuleModalZoneId(zoneId)}
           error={actionData?.error}
         />
       )}
@@ -331,13 +329,13 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
       )}
 
       {activeTab === "logs" && (
-        <AuditLogs
+        <ActionLogs
           zones={zones}
           orgName={orgName}
           dateRange={dateRange}
           onDateRangeChange={setDateRange}
           isLoading={navigation.state !== "idle"}
-          recentAttacks={recentAttacks}
+          recentActions={recentActions}
         />
       )}
 
@@ -347,7 +345,7 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
 
       {isAccountModalOpen && <AddAccountModal onClose={() => setIsAccountModalOpen(false)} isSubmitting={isAddingAccount} />}
       {isZoneModalOpen && <AddZoneModal onClose={() => setIsZoneModalOpen(false)} isSubmitting={isAddingZone} accounts={accounts} />}
-      {ruleModalZoneId && <AddToListRuleModal onClose={() => setRuleModalZoneId(null)} isSubmitting={isAddingRule} zoneId={ruleModalZoneId} accounts={accounts} zones={zones} />}
+      {ruleModalZoneId && <AddIpToListRuleModal onClose={() => setRuleModalZoneId(null)} isSubmitting={isAddingRule} zoneId={ruleModalZoneId} accounts={accounts} zones={zones} />}
     </div>
   );
 }

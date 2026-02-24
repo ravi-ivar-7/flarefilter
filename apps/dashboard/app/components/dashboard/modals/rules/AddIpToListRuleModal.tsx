@@ -1,8 +1,8 @@
 import { Form, useFetcher } from "react-router";
 import { useState, useEffect } from "react";
-import { ModalShell, FormActions, inputCls, labelCls, sectionLabelCls } from "./shared";
+import { ModalShell, FormActions, inputCls, labelCls, sectionLabelCls } from "../../ui/shared";
 
-export function AddToListRuleModal({ zoneId, onClose, isSubmitting, zones, accounts }: {
+export function AddIpToListRuleModal({ zoneId, onClose, isSubmitting, zones, accounts }: {
     zoneId: string;
     onClose: () => void;
     isSubmitting: boolean;
@@ -36,7 +36,7 @@ export function AddToListRuleModal({ zoneId, onClose, isSubmitting, zones, accou
         <ModalShell
             onClose={onClose}
             iconBg="bg-emerald-100"
-            title="Add Rule: Add to List"
+            title="Add Rule: Add IP to List"
             subtitle="Block flagged IPs by adding them to a Cloudflare IP List"
             icon={
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600">
@@ -46,7 +46,7 @@ export function AddToListRuleModal({ zoneId, onClose, isSubmitting, zones, accou
             }
         >
             <Form method="post" className="px-6 py-5 space-y-5">
-                <input type="hidden" name="intent" value="add_to_list_rule" />
+                <input type="hidden" name="intent" value="add_ip_to_list_rule" />
                 <input type="hidden" name="zoneConfigId" value={zoneId} />
                 <input type="hidden" name="cfListName" value={selectedListName} />
 
@@ -93,7 +93,8 @@ export function AddToListRuleModal({ zoneId, onClose, isSubmitting, zones, accou
                         </div>
                     </div>
                     <p className="mt-3 text-xs text-black font-medium opacity-80 pb-1">
-                        IPs exceeding the threshold within the window get added to the list.
+                        IPs exceeding the threshold within the window get added to the list. <br />
+                        <span className="italic">Note:</span> This window also determines how often this rule checks for abuse (e.g., a 300s window means it runs every 5 minutes).
                     </p>
                 </div>
 

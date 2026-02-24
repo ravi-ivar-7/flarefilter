@@ -1,34 +1,34 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useFetcher } from "react-router";
-import { LogsTable } from "./LogsTable";
+import { LogsTable } from "../widgets/LogsTable";
 import { DateRangePicker, type DateRange } from "~/components/shared/DateRangePicker";
 
 const inputCls = "block w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500 bg-slate-50 shadow-sm transition-colors text-slate-900";
 
-interface AuditLogsProps {
+interface ActionLogsProps {
     zones: any[];
     orgName: string;
     dateRange: DateRange;
     onDateRangeChange: (v: DateRange) => void;
     isLoading?: boolean;
-    recentAttacks: any[];
+    recentActions: any[];
 }
 
-export function AuditLogs({
+export function ActionLogs({
     zones,
     orgName,
     dateRange,
     onDateRangeChange,
     isLoading,
-    recentAttacks
-}: AuditLogsProps) {
+    recentActions
+}: ActionLogsProps) {
     const fetcher = useFetcher();
     const [selectedZoneId, setSelectedZoneId] = useState("");
     const [limit, setLimit] = useState(100);
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
     const [activeFilters, setActiveFilters] = useState<string[]>([]);
     const filterRef = useRef<HTMLDivElement>(null);
-    const [results, setResults] = useState<any[]>(recentAttacks || []);
+    const [results, setResults] = useState<any[]>(recentActions || []);
     const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
@@ -78,7 +78,7 @@ export function AuditLogs({
         if (!searchQuery.trim()) return results;
         const q = searchQuery.toLowerCase();
         return results.filter(log =>
-            log.ip.toLowerCase().includes(q) ||
+            log.targetValue.toLowerCase().includes(q) ||
             log.actionTaken.toLowerCase().includes(q) ||
             log.ruleId.toLowerCase().includes(q) ||
             (log.metadata && log.metadata.toLowerCase().includes(q))
@@ -163,7 +163,7 @@ export function AuditLogs({
                     </div>
                     <input
                         type="text"
-                        placeholder="Search IP, Rule ID..."
+                        placeholder="Search Target, Rule ID..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className={`${inputCls} h-[34px] pl-8 pr-3 text-[11px] font-bold bg-white/50 border-slate-200 shadow-sm rounded-xl focus:ring-slate-950 placeholder:text-slate-400 placeholder:font-medium`}

@@ -1,11 +1,11 @@
 import { RuleHandler, RuleContext } from '../interface';
 
-export class AddToListRule implements RuleHandler {
+export class AddIpToListRule implements RuleHandler {
     /**
      * Finds abusive IPs in Analytics and pushes them to a Custom List.
      */
-    async execute({ zone, rule, cf, audit }: RuleContext): Promise<void> {
-        console.log(`  Rule: add_to_list → list=${rule.cfListId}, threshold=${rule.rateLimitThreshold}, window=${rule.windowSeconds}s`);
+    async execute({ zone, rule, cf, actionLogger }: RuleContext): Promise<void> {
+        console.log(`  Rule: add_ip_to_list → list=${rule.cfListId}, threshold=${rule.rateLimitThreshold}, window=${rule.windowSeconds}s`);
 
         try {
             // 1. Fetch abusive IPs using the dedicated CF Client
@@ -28,12 +28,13 @@ export class AddToListRule implements RuleHandler {
                 try {
                     const cfListItemId = await cf.ips.addToList(rule.cfListId, ip);
 
-                    await audit.logAction({
+                    await actionLogger.logAction({
                         tenantId: zone.tenantId,
                         zoneConfigId: zone.id,
                         ruleId: rule.id,
                         actionTaken: 'IP_BLOCKED',
-                        ip,
+                        targetType: 'IP',
+                        targetValue: ip,
                         requestCount: count,
                         metadata: JSON.stringify({ cfListId: rule.cfListId, cfListItemId }),
                     });
@@ -52,7 +53,7 @@ export class AddToListRule implements RuleHandler {
                 console.log(`  Successfully blocked ${blockedCount} new IPs.`);
             }
         } catch (err) {
-            console.error(`  Error processing AddToList rule ${rule.id} on zone ${zone.name}:`, err);
+            console.error(`  Error processing AddIpToList rule ${rule.id} on zone ${zone.name}:`, err);
         }
     }
 }

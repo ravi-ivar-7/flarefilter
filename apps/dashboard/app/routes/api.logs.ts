@@ -32,13 +32,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     // Time filter
     const cutoffTimeMs = Date.now() - (windowSeconds * 1000);
-    conditions.push(gte(actionLogs.blockedAt, new Date(cutoffTimeMs)));
+    conditions.push(gte(actionLogs.timestamp, new Date(cutoffTimeMs)));
 
     try {
         const query = db.select()
             .from(actionLogs)
             .where(and(...conditions))
-            .orderBy(desc(actionLogs.blockedAt))
+            .orderBy(desc(actionLogs.timestamp))
             .limit(limit);
 
         const logs = await query;

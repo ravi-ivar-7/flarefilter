@@ -2,8 +2,8 @@ name = "flarefilter-worker"
 main = "src/index.ts"
 compatibility_date = "2024-02-08"
 
-# The Worker runs frequently (e.g., every minute), but the ACTUAL execution per tenant is completely dynamic.
-# D1 decides if a tenant is due for a check (e.g., this tenant wants checks every 5 mins, that tenant wants checks every 10 mins).
+# The Worker runs frequently (e.g., every minute), but the ACTUAL execution per rule is completely dynamic.
+# The code decides if a rule is due for a check (e.g., this rule checks every 5 mins, that rule checks every 10 mins).
 [triggers]
 crons = ["* * * * *"]
 

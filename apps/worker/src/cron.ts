@@ -20,18 +20,8 @@ export async function runCronTasks(env: Env, ctx: ExecutionContext) {
         return;
     }
 
-    const currentMinute = new Date().getUTCMinutes();
-
-    // 2. Determine Which Zones to Process
+    // 2. Delegate execution directly to the Rule Engine
     for (const zone of activeZones) {
-        // Respect per-zone polling interval
-        const intervalMins = zone.pollingIntervalMinutes ?? 5;
-        if (currentMinute % intervalMins !== 0) {
-            console.log(`Skipping ${zone.name} (polling set to every ${intervalMins}m. Current minute: ${currentMinute})`);
-            continue;
-        }
-
-        // 3. Delegate execution directly to the Rule Engine
         await engine.processZone(zone);
     }
 

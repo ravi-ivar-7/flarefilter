@@ -1,5 +1,5 @@
 import { Form } from "react-router";
-import { ModalShell, FormActions, inputCls, monoCls, labelCls, sectionLabelCls } from "./shared";
+import { ModalShell, FormActions, inputCls, monoCls, labelCls, sectionLabelCls } from "../ui/shared";
 
 export function AddAccountModal({ onClose, isSubmitting }: { onClose: () => void; isSubmitting: boolean }) {
     return (

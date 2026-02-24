@@ -1,6 +1,6 @@
 import { useFetcher } from "react-router";
 import { useState, useEffect, useMemo, useRef } from "react";
-import { inputCls, labelCls, glassCls } from "./shared";
+import { inputCls, labelCls, glassCls } from "../ui/shared";
 import { DateRangePicker, type DateRange } from "~/components/shared/DateRangePicker";
 
 export function IPsAnalyzer({

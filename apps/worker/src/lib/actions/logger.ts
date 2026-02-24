@@ -1,7 +1,7 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1';
 import { actionLogs } from '@flarefilter/db/src/schema/zones';
 
-export class AuditLogger {
+export class ActionLogger {
     constructor(private db: DrizzleD1Database<any>) { }
 
     /**
@@ -12,10 +12,11 @@ export class AuditLogger {
         zoneConfigId: string;
         ruleId: string;
         actionTaken: string;
-        ip: string;
+        targetType: string;
+        targetValue: string;
         requestCount: number;
         metadata?: string;
-        blockedAt?: Date;
+        timestamp?: Date;
     }) {
         try {
             await this.db.insert(actionLogs).values({
@@ -24,14 +25,15 @@ export class AuditLogger {
                 zoneConfigId: params.zoneConfigId,
                 ruleId: params.ruleId,
                 actionTaken: params.actionTaken,
-                ip: params.ip,
+                targetType: params.targetType,
+                targetValue: params.targetValue,
                 requestCount: params.requestCount,
                 metadata: params.metadata,
-                blockedAt: params.blockedAt ?? new Date(),
+                timestamp: params.timestamp ?? new Date(),
             });
-            console.log(`  > Action logged for IP: ${params.ip} (${params.actionTaken})`);
+            console.log(`  > Action logged for ${params.targetType} ${params.targetValue} (${params.actionTaken})`);
         } catch (error) {
-            console.error(`Failed to write action log for IP ${params.ip}: `, error);
+            console.error(`Failed to write action log for ${params.targetType} ${params.targetValue}: `, error);
         }
     }
 }

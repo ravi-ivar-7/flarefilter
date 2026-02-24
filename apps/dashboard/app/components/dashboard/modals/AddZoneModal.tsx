@@ -1,6 +1,6 @@
 import { Form, useFetcher } from "react-router";
 import { useState, useEffect } from "react";
-import { ModalShell, FormActions, inputCls, monoCls, labelCls, sectionLabelCls } from "./shared";
+import { ModalShell, FormActions, inputCls, monoCls, labelCls, sectionLabelCls } from "../ui/shared";
 
 export function AddZoneModal({ onClose, isSubmitting, accounts }: {
     onClose: () => void;
@@ -78,11 +78,6 @@ export function AddZoneModal({ onClose, isSubmitting, accounts }: {
                             {discoveredZones.length === 0 && selectedAccount && fetcher.state !== "submitting" && (
                                 <p className="mt-1 text-[10px] text-rose-500 font-bold italic select-none uppercase tracking-tight">No zones found. Check token permissions.</p>
                             )}
-                        </div>
-                        <div>
-                            <label className={labelCls}>Poll interval (minutes)</label>
-                            <input type="number" name="pollingIntervalMinutes" defaultValue={5} min={1} max={60} className={inputCls} />
-                            <p className="mt-1.5 text-xs text-black font-medium opacity-80">How often the worker queries CF Analytics for this zone.</p>
                         </div>
                     </div>
                 </div>

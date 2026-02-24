@@ -77,7 +77,6 @@ export function ZonesList({ zones, accounts, rules, onAddZone, onAddRule }: {
 
                                         <div className="flex items-center gap-2 shrink-0 flex-wrap">
                                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/50">{account?.label || "Unknown Account"}</span>
-                                            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-wider bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100/50 italic">every {zone.pollingIntervalMinutes}m</span>
                                             <span className="text-[10px] text-gray-400 font-mono opacity-70 border border-slate-200/50 px-2 py-0.5 rounded-md hidden md:inline-block truncate max-w-[120px]" title="Cloudflare Zone ID">{zone.cfZoneId}</span>
                                         </div>
                                     </div>
@@ -148,7 +147,7 @@ export function ZonesList({ zones, accounts, rules, onAddZone, onAddRule }: {
                                                         </Form>
 
                                                         <div className="flex items-center gap-3 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
-                                                            <span className="text-xs font-black text-slate-900 uppercase tracking-tight shrink-0">Add to List</span>
+                                                            <span className="text-xs font-black text-slate-900 uppercase tracking-tight shrink-0">Add IP to List</span>
                                                             <div className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0 hidden sm:block" />
                                                             <span className="text-sm font-bold text-indigo-600 truncate shrink-0 max-w-[150px]" title={rule.cfListName || rule.cfListId}>
                                                                 {rule.cfListName || "Global List"}

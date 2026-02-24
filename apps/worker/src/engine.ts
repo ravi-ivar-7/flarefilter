@@ -1,8 +1,8 @@
 import { RuleHandlers } from './rules/index';
 import { CloudflareClient } from './lib/cloudflare/client';
-import { AuditLogger } from './lib/audit/logger';
+import { ActionLogger } from './lib/actions/logger';
 
-import { addToListRules, cloudflareAccounts } from '@flarefilter/db/src/schema/zones';
+import { addIpToListRules, cloudflareAccounts } from '@flarefilter/db/src/schema/zones';
 import { ZoneConfig } from './rules/interface';
 import { DrizzleD1Database } from 'drizzle-orm/d1';
 import { and, eq } from 'drizzle-orm';
@@ -13,7 +13,7 @@ export class RuleEngine {
     /**
      * Executes all rules configured for a specific zone.
      * The Engine fetches the right credentials from CF and distributes jobs
-     * to the appropriate rule plugins (e.g. AddToList, JSChallenge).
+     * to the appropriate rule plugins (e.g. AddIpToList, JSChallenge).
      */
     async processZone(zone: ZoneConfig) {
         console.log(`\nProcessing zone: ${zone.name} (${zone.cfZoneId})`);
@@ -28,15 +28,15 @@ export class RuleEngine {
         }
 
         const cf = new CloudflareClient(account.cfAccountId, account.cfApiToken);
-        const audit = new AuditLogger(this.db);
+        const actionLogger = new ActionLogger(this.db);
 
         // 2. Fetch all generic active rules for this zone here
         // NOTE: If we get multiple rule tables (e.g., jsChallengeRules), we should map/concat them together into unified Rule objects
-        const rawAddToListRules = await this.db.select().from(addToListRules)
-            .where(and(eq(addToListRules.zoneConfigId, zone.id), eq(addToListRules.isActive, true)));
+        const rawAddIpToListRules = await this.db.select().from(addIpToListRules)
+            .where(and(eq(addIpToListRules.zoneConfigId, zone.id), eq(addIpToListRules.isActive, true)));
 
         const activeRules = [
-            ...rawAddToListRules.map(r => ({ ...r, type: 'add_to_list' })),
+            ...rawAddIpToListRules.map(r => ({ ...r, type: 'add_ip_to_list' })),
             // Add other plugins here in the future
             // ...rawChallengeRules.map(r => ({...r, type: 'js_challenge'}))
         ];
@@ -46,8 +46,18 @@ export class RuleEngine {
             return;
         }
 
+        const currentMinute = new Date().getUTCMinutes();
+
         // 3. Delegate to Rule Handlers
         for (const rule of activeRules) {
+            const windowSeconds = rule.windowSeconds ?? 300;
+            const intervalMins = Math.max(1, Math.floor(windowSeconds / 60));
+
+            if (currentMinute % intervalMins !== 0) {
+                console.log(`  Skipping rule ${rule.id} (polling set to every ${intervalMins}m. Current minute: ${currentMinute})`);
+                continue;
+            }
+
             const handler = RuleHandlers[rule.type];
 
             if (!handler) {
@@ -55,8 +65,7 @@ export class RuleEngine {
                 continue;
             }
 
-            // Expose the Context to the Handler plugin
-            await handler.execute({ zone, rule, cf, audit });
+            await handler.execute({ zone, rule, cf, actionLogger });
         }
     }
 }

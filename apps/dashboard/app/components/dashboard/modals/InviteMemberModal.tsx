@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { inputCls, labelCls } from "./shared";
+import { inputCls, labelCls } from "../ui/shared";
 
 export function InviteMemberModal({ onClose }: { onClose: () => void }) {
     const [email, setEmail] = useState("");

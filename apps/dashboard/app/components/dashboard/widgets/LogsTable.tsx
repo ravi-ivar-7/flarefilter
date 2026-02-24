@@ -40,7 +40,7 @@ export function LogsTable({ logs, zones = [] }: { logs: any[], zones?: any[] }) 
                 <thead className="bg-slate-50/95 backdrop-blur-sm border-b border-slate-100 sticky top-0 z-20">
                     <tr>
                         <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Timestamp</th>
-                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">IP Address</th>
+                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Target</th>
                         <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Zone</th>
                         <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Action</th>
                         <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Mitigated</th>
@@ -50,7 +50,7 @@ export function LogsTable({ logs, zones = [] }: { logs: any[], zones?: any[] }) 
                 <tbody className="divide-y divide-slate-100">
                     {logs.map((log) => {
                         const metadata = log.metadata ? JSON.parse(log.metadata) : {};
-                        const date = new Date(log.blockedAt);
+                        const date = new Date(log.timestamp);
                         const zoneName = zones.find(z => z.id === log.zoneConfigId)?.name || "Unknown Zone";
                         return (
                             <tr key={log.id} className="transition-all group cursor-pointer hover:bg-slate-50/80">
@@ -59,9 +59,12 @@ export function LogsTable({ logs, zones = [] }: { logs: any[], zones?: any[] }) 
                                     <div className="text-[10px] text-slate-400 font-medium">{formatDateFull(date)}</div>
                                 </td>
                                 <td className="px-6 py-5">
-                                    <span className="font-mono text-xs font-bold text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-sm group-hover:border-indigo-400 transition-colors whitespace-nowrap">
-                                        {log.ip}
-                                    </span>
+                                    <div className="flex flex-col gap-1">
+                                        <span className="font-mono text-xs font-bold text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-sm group-hover:border-indigo-400 transition-colors whitespace-nowrap inline-block w-max">
+                                            {log.targetValue}
+                                        </span>
+                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">{log.targetType}</span>
+                                    </div>
                                 </td>
                                 <td className="px-6 py-5">
                                     <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">{zoneName}</span>

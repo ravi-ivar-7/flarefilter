@@ -1,5 +1,5 @@
 import { CloudflareClient } from '../lib/cloudflare/client';
-import { AuditLogger } from '../lib/audit/logger';
+import { ActionLogger } from '../lib/actions/logger';
 
 // Standardized Zone object passed from the DB
 export interface ZoneConfig {
@@ -14,7 +14,7 @@ export interface RuleContext {
     zone: ZoneConfig;
     rule: any; // The generic DB row. We cast this inside the specific handlers.
     cf: CloudflareClient;
-    audit: AuditLogger;
+    actionLogger: ActionLogger;
 }
 
 export interface RuleHandler {

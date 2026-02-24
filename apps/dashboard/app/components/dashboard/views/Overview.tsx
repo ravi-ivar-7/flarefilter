@@ -1,8 +1,8 @@
-import { ConnectedAccounts } from "./ConnectedAccounts";
-import { MetricsGrid } from "./MetricsGrid";
-import { ZonesList } from "./ZonesList";
+import { ConnectedAccounts } from "../widgets/ConnectedAccounts";
+import { MetricsGrid } from "../widgets/MetricsGrid";
+import { ZonesList } from "../widgets/ZonesList";
 import { DateRangePicker, type DateRange } from "~/components/shared/DateRangePicker";
-import { RecentBlocks } from "./RecentBlocks";
+import { RecentActions } from "../widgets/RecentActions";
 
 interface OverviewProps {
     orgName: string;
@@ -12,7 +12,7 @@ interface OverviewProps {
     accounts: any[];
     zones: any[];
     rules: any[];
-    recentAttacks: any[];
+    recentActions: any[];
     totalBlocks: number;
     onAddAccount: () => void;
     onAddZone: () => void;
@@ -28,7 +28,7 @@ export function Overview({
     accounts,
     zones,
     rules,
-    recentAttacks,
+    recentActions,
     totalBlocks,
     onAddAccount,
     onAddZone,
@@ -86,7 +86,7 @@ export function Overview({
                     />
                     <div className="relative w-full h-full min-h-[400px]">
                         <div className="absolute inset-0">
-                            <RecentBlocks attacks={recentAttacks} />
+                            <RecentActions actions={recentActions} />
                         </div>
                     </div>
                 </div>

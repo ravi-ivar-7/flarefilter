@@ -1,4 +1,4 @@
-import { subtleIndigoCls, subtleNeutralCls, glassCls, sectionLabelCls } from "./shared";
+import { subtleIndigoCls, subtleNeutralCls, glassCls, sectionLabelCls } from "../ui/shared";
 
 export function Profile({ user, activeOrg, orgs }: { user: any; activeOrg: any; orgs: any[] }) {
     const formatDate = (date: string | number | Date) => {
