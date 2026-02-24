@@ -10,10 +10,10 @@
  *   animate:  boolean                       (default: true)
  */
 
-import iconSrc from "../welcome/icon.png";
-import logoBglessSrc from "../welcome/logo-bgless.png";
-import logoWhiteSrc from "../welcome/logo-white.png";
-import logoDarkSrc from "../welcome/logo-dark.png";
+const iconSrc = "/assets/icon.png";
+const logoBglessSrc = "/assets/logo-bgless.png";
+const logoWhiteSrc = "/assets/logo-white.png";
+const logoDarkSrc = "/assets/logo-dark.png";
 
 interface LogoProps {
     variant?: "icon" | "full";

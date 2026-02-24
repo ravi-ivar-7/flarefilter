@@ -24,7 +24,7 @@ export const meta: Route.MetaFunction = () => [
   { property: "og:site_name", content: "FlareFilter" },
   { property: "og:title", content: "FlareFilter - Automated Cloudflare IP Protection" },
   { property: "og:description", content: "Detect and block abusive IPs on Cloudflare automatically. Real-time analytics, configurable thresholds, and zero manual intervention." },
-  { property: "og:image", content: "/welcome/og-image.png" },
+  { property: "og:image", content: "/assets/og-image.png" },
   { name: "robots", content: "noindex, nofollow" }, // dashboard is private
 ];
 
@@ -36,15 +36,15 @@ export const links: Route.LinksFunction = () => [
 
   // Favicons
   { rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
-  { rel: "icon", type: "image/png", sizes: "16x16", href: "/welcome/favicon-16x16.png" },
-  { rel: "icon", type: "image/png", sizes: "32x32", href: "/welcome/favicon-32x32.png" },
-  { rel: "icon", type: "image/png", sizes: "48x48", href: "/welcome/favicon-48x48.png" },
+  { rel: "icon", type: "image/png", sizes: "16x16", href: "/assets/favicon-16x16.png" },
+  { rel: "icon", type: "image/png", sizes: "32x32", href: "/assets/favicon-32x32.png" },
+  { rel: "icon", type: "image/png", sizes: "48x48", href: "/assets/favicon-48x48.png" },
 
   // Apple / iOS
-  { rel: "apple-touch-icon", sizes: "180x180", href: "/welcome/apple-touch-icon.png" },
+  { rel: "apple-touch-icon", sizes: "180x180", href: "/assets/apple-touch-icon.png" },
 
   // Web manifest (Android, PWA)
-  { rel: "manifest", href: "/welcome/site.webmanifest" },
+  { rel: "manifest", href: "/assets/site.webmanifest" },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {

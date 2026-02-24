@@ -2,6 +2,8 @@ import { useFetcher } from "react-router";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { inputCls, labelCls, glassCls } from "../ui/shared";
 import { DateRangePicker, type DateRange } from "~/components/shared/DateRangePicker";
+import { PushIpToList } from "../modals/PushIpToList";
+import { IpDetails } from "../modals/IpDetails";
 
 export function IPsAnalyzer({
     zones,
@@ -27,8 +29,6 @@ export function IPsAnalyzer({
     isLoading: boolean;
 }) {
     const fetcher = useFetcher();
-    const ipListAddFetcher = useFetcher();
-    const ipListsFetcher = useFetcher();
 
     const [dimensions, setDimensions] = useState<string[]>(() => {
         if (typeof window === "undefined") return ["clientIP"];
@@ -44,9 +44,7 @@ export function IPsAnalyzer({
     const [isDimensionsModalOpen, setIsDimensionsModalOpen] = useState(false);
     const [isActionDropdownOpen, setIsActionDropdownOpen] = useState(false);
     const [isIpListAddOpen, setIsIpListAddOpen] = useState(false);
-    const [selectedIpListId, setSelectedIpListId] = useState("");
-    const [availableIpLists, setAvailableIpLists] = useState<any[]>([]);
-    const [ipListAddResult, setIpListAddResult] = useState<{ success?: boolean; added?: number; error?: string } | null>(null);
+    const [inspectedIp, setInspectedIp] = useState<string | null>(null);
     const dimensionsRef = useRef<HTMLDivElement>(null);
     const actionRef = useRef<HTMLDivElement>(null);
 
@@ -62,55 +60,6 @@ export function IPsAnalyzer({
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
-
-    // Fetch CF IP lists when the Add IPs to IP List modal opens
-    useEffect(() => {
-        if (!isIpListAddOpen || !activeZoneId) return;
-        setIpListAddResult(null); // clear previous feedback
-        const zone = zones.find(z => z.id === activeZoneId);
-        if (!zone) return;
-        const fd = new FormData();
-        fd.append("accountRef", zone.cfAccountRef);
-        fd.append("type", "lists");
-        ipListsFetcher.submit(fd, { method: "post", action: "/api/cloudflare" });
-    }, [isIpListAddOpen, activeZoneId]);
-
-    useEffect(() => {
-        if (ipListsFetcher.data && Array.isArray(ipListsFetcher.data)) {
-            setAvailableIpLists(ipListsFetcher.data.filter((l: any) => l.kind === "ip"));
-        }
-    }, [ipListsFetcher.data]);
-
-    // Capture result and auto-close on success
-    useEffect(() => {
-        if (!ipListAddFetcher.data) return;
-        setIpListAddResult(ipListAddFetcher.data as any);
-        if ((ipListAddFetcher.data as any)?.success) {
-            setTimeout(() => {
-                setIsIpListAddOpen(false);
-                setSelectedIpListId("");
-                setIsActionDropdownOpen(false);
-                setSelectedItems(new Set());
-                setIpListAddResult(null);
-            }, 1500);
-        }
-    }, [ipListAddFetcher.data]);
-
-    const handleIpListAdd = () => {
-        const zone = zones.find(z => z.id === activeZoneId);
-        if (!zone || !selectedIpListId) return;
-        const selectedIps = Array.from(selectedItems)
-            .map(i => results[i]?.clientIP)
-            .filter(Boolean)
-            .join(",");
-        if (!selectedIps) return;
-        const fd = new FormData();
-        fd.append("accountRef", zone.cfAccountRef);
-        fd.append("type", "ip-list-add");
-        fd.append("listId", selectedIpListId);
-        fd.append("ips", selectedIps);
-        ipListAddFetcher.submit(fd, { method: "post", action: "/api/cloudflare" });
-    };
 
     const selectedIps = Array.from(selectedItems).map(i => results[i]?.clientIP).filter(Boolean);
 
@@ -152,6 +101,11 @@ export function IPsAnalyzer({
         fetcher.submit(formData, { method: "post", action: "/api/cloudflare" });
     };
 
+    const selectedItemsSizeRef = useRef(selectedItems.size);
+    useEffect(() => {
+        selectedItemsSizeRef.current = selectedItems.size;
+    }, [selectedItems.size]);
+
     // Auto-fetch on live or range change
     useEffect(() => {
         if (!activeZoneId) return;
@@ -163,7 +117,8 @@ export function IPsAnalyzer({
 
         const intervalMs = (dateRange.refreshInterval || 10) * 1000;
         const timer = setInterval(() => {
-            if (fetcher.state === "idle") {
+            // Pause auto-refresh as long as the user has items selected for an action
+            if (fetcher.state === "idle" && selectedItemsSizeRef.current === 0) {
                 handleFetch();
             }
         }, intervalMs);
@@ -194,7 +149,7 @@ export function IPsAnalyzer({
     return (
         <>
             <div className="flex flex-col gap-4 sm:gap-6">
-                <header className="sticky top-16 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/60 px-3 sm:px-4 py-3 flex flex-row flex-wrap gap-2 items-center w-full">
+                <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/60 px-3 sm:px-4 py-3 flex flex-row flex-wrap gap-2 items-center w-full">
 
                     {/* Dimensions */}
                     <div className="relative shrink-0" ref={dimensionsRef}>
@@ -295,7 +250,7 @@ export function IPsAnalyzer({
                         <>
                             <div className="w-px h-6 bg-slate-200 shrink-0" />
 
-                            <div className="flex items-center gap-2 bg-indigo-50/50 border border-indigo-100/50 py-1 px-3 rounded-md animate-in fade-in slide-in-from-top-2 duration-300 shrink-0">
+                            <div className="flex flex-wrap items-center gap-2 bg-indigo-50/50 border border-indigo-100/50 py-1 px-3 rounded-md animate-in fade-in slide-in-from-top-2 duration-300">
                                 {/* Count */}
                                 <span className="bg-white border border-indigo-200 text-indigo-700 text-[11px] font-black px-2 py-0.5 rounded-md tabular-nums shadow-sm select-none">{selectedItems.size}</span>
                                 <span className="text-[12px] font-bold text-indigo-900 select-none">selected</span>
@@ -392,103 +347,18 @@ export function IPsAnalyzer({
 
                 </header>
 
-                {/* Add IPs to IP List Modal */}
-                {isIpListAddOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-150">
-                        <div className="bg-white rounded-md shadow-2xl border border-slate-200 w-full max-w-md animate-in zoom-in-95 duration-200">
-
-                            {/* Modal header */}
-                            <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-slate-100">
-                                <div className="w-9 h-9 rounded-md bg-indigo-50 flex items-center justify-center shrink-0">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-                                </div>
-                                <div>
-                                    <h3 className="text-[14px] font-black text-slate-900">Add IPs to IP List</h3>
-                                    <p className="text-[11px] text-slate-400 font-medium">Push selected IPs into a Cloudflare IP List</p>
-                                </div>
-                                <button onClick={() => { setIsIpListAddOpen(false); setSelectedIpListId(""); }} className="ml-auto text-slate-400 hover:text-slate-600 transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                                </button>
-                            </div>
-
-                            <div className="px-5 py-4 space-y-4">
-
-                                {/* Selected IPs preview */}
-                                <div>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">IPs to add ({selectedIps.length})</p>
-                                    {selectedItems.size > selectedIps.length && (
-                                        <p className="mb-2 text-[10px] text-amber-600 font-bold bg-amber-50 border border-amber-100 px-2 py-1.5 rounded-md">
-                                            ⚠ {selectedItems.size - selectedIps.length} selected row(s) have no <code className="bg-amber-100 px-1 rounded">clientIP</code> and will be skipped. Make sure <strong>clientIP</strong> is an active dimension.
-                                        </p>
-                                    )}
-                                    <div className="flex flex-wrap gap-1.5 p-3 bg-slate-50 border border-slate-200 rounded-md max-h-28 overflow-y-auto">
-                                        {selectedIps.length > 0 ? selectedIps.map(ip => (
-                                            <span key={ip} className="font-mono text-[11px] font-bold bg-white border border-slate-200 text-slate-800 px-2 py-0.5 rounded-md shadow-sm">{ip}</span>
-                                        )) : (
-                                            <span className="text-[11px] text-amber-600 font-medium italic">No rows with a <code className="bg-amber-50 px-1 rounded">clientIP</code> dimension are selected.</span>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* CF IP List selector */}
-                                <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Target Cloudflare IP List</label>
-                                    {ipListsFetcher.state === "submitting" ? (
-                                        <div className="flex items-center gap-2 h-[36px] text-[12px] text-slate-400 font-medium">
-                                            <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                                            Fetching IP Lists from Cloudflare...
-                                        </div>
-                                    ) : (
-                                        <select
-                                            value={selectedIpListId}
-                                            onChange={e => setSelectedIpListId(e.target.value)}
-                                            className="w-full h-[36px] px-3 text-[12px] font-bold bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                                        >
-                                            <option value="">{availableIpLists.length === 0 ? "No IP lists found" : "Select an IP list..."}</option>
-                                            {availableIpLists.map((l: any) => (
-                                                <option key={l.id} value={l.id}>{l.name} ({l.id.slice(0, 8)}…)</option>
-                                            ))}
-                                        </select>
-                                    )}
-                                    {availableIpLists.length === 0 && ipListsFetcher.state === "idle" && (
-                                        <p className="mt-1.5 text-[10px] text-rose-500 font-medium italic">No IP lists found. Go to Cloudflare → Account → Lists to create one.</p>
-                                    )}
-                                </div>
-
-                                {/* Error */}
-                                {ipListAddResult?.error && (
-                                    <p className="text-[11px] text-rose-600 font-bold bg-rose-50 border border-rose-100 px-3 py-2 rounded-md">⚠ {ipListAddResult.error}</p>
-                                )}
-
-                                {/* Success */}
-                                {ipListAddResult?.success && (
-                                    <p className="text-[11px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-100 px-3 py-2 rounded-md">✓ {ipListAddResult.added} IP(s) added successfully!</p>
-                                )}
-                            </div>
-
-                            {/* Footer */}
-                            <div className="px-5 pb-5 flex items-center justify-end gap-2">
-                                <button
-                                    onClick={() => { setIsIpListAddOpen(false); setSelectedIpListId(""); }}
-                                    className="px-4 py-2 text-[12px] font-bold text-slate-500 hover:text-slate-700 rounded-md hover:bg-slate-100 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleIpListAdd}
-                                    disabled={!selectedIpListId || selectedIps.length === 0 || ipListAddFetcher.state === "submitting"}
-                                    className="flex items-center gap-2 px-4 py-2 text-[12px] font-bold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-md transition-colors shadow-sm"
-                                >
-                                    {ipListAddFetcher.state === "submitting" ? (
-                                        <><svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Adding...</>
-                                    ) : (
-                                        <>Add {selectedIps.length} IP{selectedIps.length !== 1 ? "s" : ""} to List</>
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                <PushIpToList
+                    isOpen={isIpListAddOpen}
+                    onClose={() => setIsIpListAddOpen(false)}
+                    onSuccess={() => {
+                        setSelectedItems(new Set());
+                        setIsActionDropdownOpen(false);
+                    }}
+                    selectedIps={selectedIps}
+                    selectedItemsSize={selectedItems.size}
+                    activeZoneId={activeZoneId}
+                    zones={zones}
+                />
 
 
 
@@ -602,11 +472,25 @@ export function IPsAnalyzer({
                                                     </td>
                                                     {(dimensions.length > 0 ? dimensions : ["clientIP"]).map(dim => {
                                                         if (dim === "clientIP") {
+                                                            const ipVal = r[dim];
                                                             return (
                                                                 <td key={dim} className="px-8 py-5">
-                                                                    <span className="font-mono text-xs font-bold text-slate-900 bg-white border border-slate-200 px-4 py-1.5 rounded-md shadow-sm group-hover:border-indigo-400 group-hover:shadow-md group-hover:shadow-indigo-500/5 transition-all whitespace-nowrap">
-                                                                        {r[dim] || "Unknown"}
-                                                                    </span>
+                                                                    {ipVal ? (
+                                                                        <button
+                                                                            onClick={(e) => { e.stopPropagation(); setInspectedIp(ipVal); }}
+                                                                            title="Inspect IP"
+                                                                            className="group/btn flex items-center font-mono text-xs font-bold text-slate-900 bg-white border border-slate-200 pl-3 pr-2.5 py-1 rounded-md shadow-sm hover:border-indigo-400 hover:shadow-md hover:shadow-indigo-500/10 transition-all whitespace-nowrap active:scale-[0.98]"
+                                                                        >
+                                                                            {ipVal}
+                                                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="ml-1.5 text-slate-300 group-hover/btn:text-indigo-500 transition-colors">
+                                                                                <path d="m21 21-6-6m6 6v-4.8m0 4.8h-4.8M3 16.2V21m0 0h4.8M3 21l6-6M21 7.8V3m0 0h-4.8M21 3l-6 6M3 7.8V3m0 0h4.8M3 3l6 6" />
+                                                                            </svg>
+                                                                        </button>
+                                                                    ) : (
+                                                                        <span className="font-mono text-xs font-bold text-slate-900 bg-white border border-slate-200 px-4 py-1.5 rounded-md shadow-sm whitespace-nowrap">
+                                                                            Unknown
+                                                                        </span>
+                                                                    )}
                                                                 </td>
                                                             );
                                                         }
@@ -716,7 +600,11 @@ export function IPsAnalyzer({
                 </div>
             </div >
 
-
+            <IpDetails
+                isOpen={!!inspectedIp}
+                onClose={() => setInspectedIp(null)}
+                ipAddress={inspectedIp}
+            />
         </>
     );
 }

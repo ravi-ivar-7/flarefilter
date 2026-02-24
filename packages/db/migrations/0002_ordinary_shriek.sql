@@ -21,4 +21,4 @@ INSERT INTO `__new_add_ip_to_list_rules`("id", "zone_config_id", "tenant_id", "c
 DROP TABLE `add_ip_to_list_rules`;--> statement-breakpoint
 ALTER TABLE `__new_add_ip_to_list_rules` RENAME TO `add_ip_to_list_rules`;--> statement-breakpoint
 PRAGMA foreign_keys=ON;--> statement-breakpoint
-ALTER TABLE `action_logs` ADD `target_type` text NOT NULL;
+ALTER TABLE `action_logs` ADD `target_type` text DEFAULT 'IP' NOT NULL;

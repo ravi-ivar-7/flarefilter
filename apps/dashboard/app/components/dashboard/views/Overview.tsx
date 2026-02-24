@@ -43,7 +43,7 @@ export function Overview({
 }: OverviewProps) {
     return (
         <div className="flex flex-col gap-4 sm:gap-6">
-            <header className="sticky top-16 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/60 px-3 sm:px-4 py-3 flex flex-row flex-wrap gap-2 items-center w-full">
+            <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/60 px-3 sm:px-4 py-3 flex flex-row flex-wrap gap-2 items-center w-full">
                 {/* Main controls (pushed left) */}
                 <div className="shrink-0 flex items-center gap-2">
                     <DateRangePicker

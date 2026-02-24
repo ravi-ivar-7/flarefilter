@@ -5,7 +5,7 @@ import { desc, eq, sql, and, gte, lte } from "drizzle-orm";
 import type { Route } from "./+types/dashboard";
 import { useNavigation, useActionData, useRevalidator, redirect } from "react-router";
 import { getAuth } from "~/lib/auth";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 import { AddAccount } from "~/components/dashboard/modals/AddAccount";
 import { AddZone } from "~/components/dashboard/modals/AddZone";
@@ -62,6 +62,11 @@ export async function action({ request, context }: Route.ActionArgs) {
     const cfApiToken = formData.get("cfApiToken") as string;
     if (label && cfAccountId && cfApiToken) {
 
+      // Cloudflare Account IDs are strictly 32-character hex strings.
+      if (!/^[a-fA-F0-9]{32}$/.test(cfAccountId)) {
+        return { error: "Invalid Account ID format. It must be exactly 32 alphanumeric characters." };
+      }
+
       // 1. Verify the token is valid at all
       try {
         const verifyRes = await fetch("https://api.cloudflare.com/client/v4/user/tokens/verify", {
@@ -73,19 +78,6 @@ export async function action({ request, context }: Route.ActionArgs) {
         }
       } catch {
         return { error: "Could not reach Cloudflare to verify the token. Check your internet connection." };
-      }
-
-      // 2. Verify the token actually has access to the specified Account ID
-      try {
-        const accountRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}`, {
-          headers: { Authorization: `Bearer ${cfApiToken}` },
-        });
-        const accountJson: any = await accountRes.json();
-        if (!accountRes.ok || !accountJson.success) {
-          return { error: "Account ID mismatch. The API token does not have access to that Cloudflare Account ID. Double-check both values." };
-        }
-      } catch {
-        return { error: "Could not verify Account ID ownership. Check your internet connection." };
       }
 
       await db.insert(cloudflareAccounts).values({
@@ -611,14 +603,29 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
   }, [dateRange, revalidator, navigation.state]);
 
   // Close modal only on success (no error). If there's an error keep modal open so user sees it.
+  const prevIsAddingAccount = useRef(isAddingAccount);
   useEffect(() => {
-    if (!isAddingAccount && navigation.state === "idle") {
-      // Only close if the last action succeeded (no error returned)
+    if (prevIsAddingAccount.current === true && isAddingAccount === false) {
       if (!actionData?.error) setIsAccountModalOpen(false);
     }
-  }, [isAddingAccount, navigation.state, actionData]);
-  useEffect(() => { if (!isAddingZone && navigation.state === "idle") setIsZoneModalOpen(false); }, [isAddingZone, navigation.state]);
-  useEffect(() => { if (!isAddingRule && navigation.state === "idle") setRuleModalZoneId(null); }, [isAddingRule, navigation.state]);
+    prevIsAddingAccount.current = isAddingAccount;
+  }, [isAddingAccount, actionData]);
+
+  const prevIsAddingZone = useRef(isAddingZone);
+  useEffect(() => {
+    if (prevIsAddingZone.current === true && isAddingZone === false) {
+      if (!actionData?.error) setIsZoneModalOpen(false);
+    }
+    prevIsAddingZone.current = isAddingZone;
+  }, [isAddingZone, actionData]);
+
+  const prevIsAddingRule = useRef(isAddingRule);
+  useEffect(() => {
+    if (prevIsAddingRule.current === true && isAddingRule === false) {
+      if (!actionData?.error) setRuleModalZoneId(null);
+    }
+    prevIsAddingRule.current = isAddingRule;
+  }, [isAddingRule, actionData]);
 
   return (
     <div className="pb-8">

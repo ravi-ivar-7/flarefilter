@@ -49,7 +49,7 @@ export const actionLogs = sqliteTable('action_logs', {
     zoneConfigId: text('zone_config_id').notNull().references(() => zoneConfigs.id),
     ruleId: text('rule_id').notNull(), // Polymorphic: no foreign key to a specific rule table
     actionTaken: text('action_taken').notNull(), // 'IP_BLOCKED', 'JS_CHALLENGE', etc.
-    targetType: text('target_type').notNull(), // e.g. 'IP', 'ASN', 'COUNTRY'
+    targetType: text('target_type').default('IP').notNull(), // e.g. 'IP', 'ASN', 'COUNTRY'
     targetValue: text('target_value').notNull(), // e.g. '192.168.1.1', 'AS15169'
     requestCount: integer('request_count').notNull(),
     metadata: text('metadata'), // JSON string containing rule-specific rollback needs (e.g. cfListId, cfListItemId)
