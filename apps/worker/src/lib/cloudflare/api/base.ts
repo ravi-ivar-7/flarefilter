@@ -43,9 +43,22 @@ export class CloudflareApiBase {
             },
         });
 
+        // Check ok BEFORE .json() — a non-JSON body (e.g. 502 HTML from a
+        // gateway in front of CF) would throw an unhandled parse error otherwise.
+        if (!response.ok) {
+            let detail: string;
+            try {
+                const err: any = await response.json();
+                detail = JSON.stringify(err.errors ?? err);
+            } catch {
+                detail = await response.text();
+            }
+            throw new Error(`Cloudflare REST API Error (${response.status}): ${detail}`);
+        }
+
         const payload: any = await response.json();
 
-        if (!response.ok || !payload.success) {
+        if (!payload.success) {
             throw new Error(`Cloudflare REST API Error: ${JSON.stringify(payload.errors)}`);
         }
 

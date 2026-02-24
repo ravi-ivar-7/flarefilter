@@ -1,14 +1,14 @@
-import { CloudflareApiBase } from './api/base';
 import { CloudflareIpApi } from './api/ip';
 
-export class CloudflareClient extends CloudflareApiBase {
-    // We compose the client by importing our specific domain APIs
+/**
+ * Composes all CF domain-specific API clients.
+ * Does NOT extend CloudflareApiBase — that is an internal base for the
+ * sub-clients only. CloudflareClient is purely a composition root.
+ */
+export class CloudflareClient {
     public readonly ips: CloudflareIpApi;
 
     constructor(cfAccountId: string, cfApiToken: string) {
-        super(cfAccountId, cfApiToken);
-
-        // Instantiate domain-specific sub-clients
         this.ips = new CloudflareIpApi(cfAccountId, cfApiToken);
 
         // Future extensions:
