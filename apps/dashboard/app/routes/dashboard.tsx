@@ -1,5 +1,6 @@
 import { drizzle } from "drizzle-orm/d1";
 import { cloudflareAccounts, zoneConfigs, addIpToListRules, actionLogs, requestActivity } from "@flarefilter/db/src/schema/zones";
+import { organization as orgTable, member as memberTable } from "@flarefilter/db/src/schema/organizations";
 import { desc, eq, sql, and, gte, lte } from "drizzle-orm";
 import type { Route } from "./+types/dashboard";
 import { useNavigation, useActionData, useRevalidator, redirect } from "react-router";
@@ -26,7 +27,8 @@ export const meta: Route.MetaFunction = () => [
 export async function action({ request, context }: Route.ActionArgs) {
   const env = context.cloudflare.env;
   if (!env.DB) throw new Error("D1 binding 'DB' not configured.");
-  const db = drizzle(env.DB);
+
+  const db = drizzle(env.DB, { schema: { cloudflareAccounts, zoneConfigs, addIpToListRules, actionLogs, orgTable, memberTable } });
 
   const auth = getAuth(env);
   const sessionData = await auth.api.getSession({ headers: request.headers });
@@ -34,9 +36,14 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   let tenantId = sessionData.session.activeOrganizationId;
   if (!tenantId) {
-    const orgs = await auth.api.listOrganizations({ headers: request.headers });
-    if (orgs.length > 0) {
-      tenantId = orgs[0].id;
+    // Fallback: find first membership via DB (faster than auth API)
+    const firstMembership = await db
+      .select({ orgId: memberTable.organizationId })
+      .from(memberTable)
+      .where(eq(memberTable.userId, sessionData.user.id))
+      .limit(1);
+    if (firstMembership.length > 0) {
+      tenantId = firstMembership[0].orgId;
     } else {
       const newOrg = await auth.api.createOrganization({
         headers: request.headers,
@@ -54,17 +61,31 @@ export async function action({ request, context }: Route.ActionArgs) {
     const cfAccountId = formData.get("cfAccountId") as string;
     const cfApiToken = formData.get("cfApiToken") as string;
     if (label && cfAccountId && cfApiToken) {
-      // 1. Verify token validity with Cloudflare
+
+      // 1. Verify the token is valid at all
       try {
         const verifyRes = await fetch("https://api.cloudflare.com/client/v4/user/tokens/verify", {
           headers: { Authorization: `Bearer ${cfApiToken}` },
         });
         const verifyJson: any = await verifyRes.json();
         if (!verifyRes.ok || !verifyJson.success) {
-          return { error: "Invalid Cloudflare API Token. Please check your permissions and try again." };
+          return { error: "Invalid API Token. Cloudflare rejected it — check the token is active and not expired." };
         }
-      } catch (err) {
-        return { error: "Failed to verify Cloudflare token. Check your internet connection." };
+      } catch {
+        return { error: "Could not reach Cloudflare to verify the token. Check your internet connection." };
+      }
+
+      // 2. Verify the token actually has access to the specified Account ID
+      try {
+        const accountRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}`, {
+          headers: { Authorization: `Bearer ${cfApiToken}` },
+        });
+        const accountJson: any = await accountRes.json();
+        if (!accountRes.ok || !accountJson.success) {
+          return { error: "Account ID mismatch. The API token does not have access to that Cloudflare Account ID. Double-check both values." };
+        }
+      } catch {
+        return { error: "Could not verify Account ID ownership. Check your internet connection." };
       }
 
       await db.insert(cloudflareAccounts).values({
@@ -196,6 +217,89 @@ export async function action({ request, context }: Route.ActionArgs) {
     return null;
   }
 
+  if (intent === "update_profile") {
+    const name = formData.get("name") as string;
+    if (name) {
+      await auth.api.updateUser({
+        headers: request.headers,
+        body: { name },
+      });
+    }
+    // Redirect so the loader re-runs and renders the updated user name
+    throw redirect("/dashboard/profile");
+  }
+
+  if (intent === "update_organization") {
+    const organizationId = formData.get("organizationId") as string;
+    const name = formData.get("name") as string;
+    if (organizationId && name) {
+      await auth.api.updateOrganization({
+        headers: request.headers,
+        body: { organizationId, data: { name } }
+      });
+    }
+    // Redirect so the loader re-runs with fresh org name
+    throw redirect("/dashboard/profile");
+  }
+
+  if (intent === "delete_organization") {
+    const orgId = formData.get("organizationId") as string;
+    if (orgId) {
+      // 0. Authorization: query DB directly — faster and correct (no role-stripping)
+      const membership = await db
+        .select({ role: memberTable.role })
+        .from(memberTable)
+        .where(and(eq(memberTable.organizationId, orgId), eq(memberTable.userId, sessionData.user.id)))
+        .limit(1);
+      const userRole = membership[0]?.role;
+      if (!userRole || userRole !== 'owner') {
+        return { error: "Permission Denied: Only organization owners can delete organizations." };
+      }
+
+      // 1. Delete all application data tied to this organization to avoid FK constraint errors
+
+      // Fetch zones to clean up their dependent logs/activity/rules
+      const zones = await db.select().from(zoneConfigs).where(eq(zoneConfigs.tenantId, orgId));
+      for (const zone of zones) {
+        // Delete transient data
+        await db.delete(actionLogs).where(eq(actionLogs.zoneConfigId, zone.id));
+        await db.delete(requestActivity).where(eq(requestActivity.zoneConfigId, zone.id));
+
+        // Delete rules from all registries
+        for (const config of Object.values(RULE_REGISTRY)) {
+          if (config.table) {
+            await db.delete(config.table).where(eq(config.table.zoneConfigId, zone.id));
+          }
+        }
+      }
+
+      // Delete zones themselves
+      await db.delete(zoneConfigs).where(eq(zoneConfigs.tenantId, orgId));
+
+      // Delete cloudflare accounts
+      await db.delete(cloudflareAccounts).where(eq(cloudflareAccounts.tenantId, orgId));
+
+      // 2. Finally delete from the auth system (which handles members/invitations)
+      await auth.api.deleteOrganization({
+        headers: request.headers,
+        body: { organizationId: orgId }
+      });
+    }
+    // Redirect so the loader re-runs with fresh session (active org changed after delete)
+    throw redirect("/dashboard/profile");
+  }
+  if (intent === "leave_organization") {
+    const orgId = formData.get("organizationId") as string;
+    if (orgId) {
+      await auth.api.leaveOrganization({
+        headers: request.headers,
+        body: { organizationId: orgId }
+      });
+    }
+    // Redirect so loader re-runs with fresh session (active org may have changed)
+    throw redirect("/dashboard/profile");
+  }
+
   return null;
 }
 
@@ -207,33 +311,59 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   const sessionData = await auth.api.getSession({ headers: request.headers });
   if (!sessionData?.user) throw redirect("/auth?mode=login");
 
-  const orgs = await auth.api.listOrganizations({ headers: request.headers });
+  const db = drizzle(env.DB, { schema: { cloudflareAccounts, zoneConfigs, addIpToListRules, actionLogs, orgTable, memberTable } });
+
+  // Single optimized query: get all orgs the current user belongs to WITH their role
+  // This replaces auth.api.listOrganizations() which strips the member.role field
+  const userOrgMemberships = await db
+    .select({
+      // org fields
+      id: orgTable.id,
+      name: orgTable.name,
+      slug: orgTable.slug,
+      logo: orgTable.logo,
+      createdAt: orgTable.createdAt,
+      metadata: orgTable.metadata,
+      // member fields
+      role: memberTable.role,
+      memberId: memberTable.id,
+    })
+    .from(memberTable)
+    .innerJoin(orgTable, eq(memberTable.organizationId, orgTable.id))
+    .where(eq(memberTable.userId, sessionData.user.id))
+    .orderBy(orgTable.createdAt);
+
+  const orgsWithRoles = userOrgMemberships; // each item has role, memberId, plus org fields
+
   let tenantId = sessionData.session.activeOrganizationId;
   let activeOrg: any = null;
 
   if (!tenantId) {
-    if (orgs.length > 0) {
-      tenantId = orgs[0].id;
-      activeOrg = orgs[0];
+    if (orgsWithRoles.length > 0) {
+      tenantId = orgsWithRoles[0].id;
+      activeOrg = orgsWithRoles[0];
     } else {
+      // No orgs yet — create a default one
       const newOrg = await auth.api.createOrganization({
         headers: request.headers,
         body: { name: `${sessionData.user.name}'s Organization`, slug: crypto.randomUUID() },
       });
       tenantId = newOrg!.id;
-      activeOrg = newOrg;
-      // Note: orgs might need to be refreshed or we just add this one
+      // Re-fetch after creation to get member row with role
+      const created = await db
+        .select({ id: orgTable.id, name: orgTable.name, slug: orgTable.slug, logo: orgTable.logo, createdAt: orgTable.createdAt, metadata: orgTable.metadata, role: memberTable.role, memberId: memberTable.id })
+        .from(memberTable)
+        .innerJoin(orgTable, eq(memberTable.organizationId, orgTable.id))
+        .where(eq(memberTable.userId, sessionData.user.id))
+        .limit(1);
+      activeOrg = created[0] ?? { ...newOrg, role: 'owner' };
+      orgsWithRoles.push(activeOrg);
     }
   } else {
-    activeOrg = orgs.find((o: any) => o.id === tenantId);
+    activeOrg = orgsWithRoles.find((o) => o.id === tenantId) ?? orgsWithRoles[0] ?? null;
   }
 
-  // Ensure orgs includes the newly created one if applicable
-  const allOrgs = orgs.length > 0 ? orgs : (activeOrg ? [activeOrg] : []);
-
   const orgName = activeOrg?.name || "Default Organization";
-
-  const db = drizzle(env.DB, { schema: { cloudflareAccounts, zoneConfigs, addIpToListRules, actionLogs } });
 
   const tab = params.tab || "overview";
 
@@ -286,7 +416,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     return (res as any[]).map(r => ({ ...r, type }));
   });
 
-  return { user: sessionData.user, orgName, activeOrg, orgs: allOrgs, accounts, zones, rules, recentActions, totalBlocks, currentTab: tab };
+  return { user: sessionData.user, orgName, activeOrg, orgs: orgsWithRoles, accounts, zones, rules, recentActions, totalBlocks, currentTab: tab };
 }
 
 export default function DashboardPage({ loaderData, params }: Route.ComponentProps) {
@@ -480,7 +610,13 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
     return () => clearInterval(timer);
   }, [dateRange, revalidator, navigation.state]);
 
-  useEffect(() => { if (!isAddingAccount && navigation.state === "idle") setIsAccountModalOpen(false); }, [isAddingAccount, navigation.state]);
+  // Close modal only on success (no error). If there's an error keep modal open so user sees it.
+  useEffect(() => {
+    if (!isAddingAccount && navigation.state === "idle") {
+      // Only close if the last action succeeded (no error returned)
+      if (!actionData?.error) setIsAccountModalOpen(false);
+    }
+  }, [isAddingAccount, navigation.state, actionData]);
   useEffect(() => { if (!isAddingZone && navigation.state === "idle") setIsZoneModalOpen(false); }, [isAddingZone, navigation.state]);
   useEffect(() => { if (!isAddingRule && navigation.state === "idle") setRuleModalZoneId(null); }, [isAddingRule, navigation.state]);
 
@@ -562,7 +698,7 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
         <Profile user={user} activeOrg={activeOrg} orgs={orgs} />
       )}
 
-      {isAccountModalOpen && <AddAccount onClose={() => setIsAccountModalOpen(false)} isSubmitting={isAddingAccount} />}
+      {isAccountModalOpen && <AddAccount onClose={() => { setIsAccountModalOpen(false); }} isSubmitting={isAddingAccount} error={actionData?.error} />}
       {isZoneModalOpen && <AddZone onClose={() => setIsZoneModalOpen(false)} isSubmitting={isAddingZone} accounts={accounts} />}
       {ruleModalZoneId && !selectedRuleType && (
         <RuleSelector

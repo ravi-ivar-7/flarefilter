@@ -16,6 +16,12 @@ export function Header({ onToggleSidebar }: HeaderProps) {
     const [isCreateOrgOpen, setIsCreateOrgOpen] = useState(false);
     const [isInviteOpen, setIsInviteOpen] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+    // Fallback chain: use activeOrg → first org in list → null
+    // The generic "Organization" string is a last resort only when user has no orgs
+    const displayOrg = activeOrg ?? (orgs && orgs.length > 0 ? orgs[0] : null);
+    const displayOrgName = displayOrg?.name || "Organization";
+
     const navigate = useNavigate();
     const location = useLocation();
     const userRef = useRef<HTMLDivElement>(null);
@@ -64,7 +70,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
     return (
         <>
             {/* ── Header bar ─────────────────────────────────────────── */}
-            <header className="sticky top-0 z-40 w-full bg-white border-b border-slate-200 flex-shrink-0">
+            <header className="sticky top-0 z-50 w-full bg-white border-b border-slate-200 flex-shrink-0">
                 <div className={`${isDashboardPath ? "px-4 md:px-6" : "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"} h-16 flex items-center text-slate-900`}>
 
                     {/* 📱 MOBILE NAVIGATION (Order: Toggle, Logo+Name, Dashboard Link, Spacer, Org, User) */}
@@ -108,7 +114,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                                         }}
                                         className="flex-1 flex items-center gap-1.5 h-9 px-2 text-[11px] font-bold text-slate-700 min-w-0 hover:bg-white transition-colors"
                                     >
-                                        <span className="truncate">{activeOrg?.name || "Organization"}</span>
+                                        <span className="truncate">{displayOrgName}</span>
                                         <Chevron open={isOrgOpen} />
                                     </button>
 
@@ -171,7 +177,8 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                                         <p className="text-xs text-slate-400 truncate mt-0.5">{session?.user?.email}</p>
                                     </div>
                                     <div className="p-1.5 space-y-0.5">
-                                        <DropdownItem icon={<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect width="7" height="9" x="3" y="3" rx="1" /><rect width="7" height="5" x="14" y="3" rx="1" /><rect width="7" height="9" x="14" y="12" rx="1" /><rect width="7" height="5" x="3" y="16" rx="1" /></svg>} onClick={() => navigate("/dashboard")}>Dashboard</DropdownItem>
+                                        <DropdownItem icon={<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect width="7" height="9" x="3" y="3" rx="1" /><rect width="7" height="5" x="14" y="3" rx="1" /><rect width="7" height="9" x="14" y="12" rx="1" /><rect width="7" height="5" x="3" y="16" rx="1" /></svg>} onClick={() => { navigate("/dashboard"); setIsUserOpen(false); }}>Dashboard</DropdownItem>
+                                        <DropdownItem icon={<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>} onClick={() => { navigate("/dashboard/profile"); setIsUserOpen(false); }}>Profile</DropdownItem>
                                         <DropdownItem icon={<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>} onClick={handleSignOut} danger>Sign Out</DropdownItem>
                                     </div>
                                 </Dropdown>
@@ -249,8 +256,8 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                                             onClick={() => setIsOrgOpen(v => !v)}
                                             className="flex items-center gap-2 h-9 px-3 text-sm font-semibold text-slate-700 hover:bg-white transition-all min-w-0 max-w-[170px]"
                                         >
-                                            <OrgAvatar name={activeOrg?.name || "W"} size="sm" />
-                                            <span className="truncate">{activeOrg?.name || "Organization"}</span>
+                                            <OrgAvatar name={displayOrgName} size="sm" />
+                                            <span className="truncate">{displayOrgName}</span>
                                             <Chevron open={isOrgOpen} />
                                         </button>
 
@@ -390,7 +397,7 @@ function NavLink({ to, active, children }: { to: string; active: boolean; childr
 
 function Dropdown({ children, className }: { children: React.ReactNode; className?: string }) {
     return (
-        <div className={`absolute top-full mt-2 bg-white border border-slate-200 rounded-md shadow-lg shadow-slate-900/10 z-50 overflow-hidden ${className}`}>
+        <div className={`absolute top-full mt-2 bg-white border border-slate-200 rounded-md shadow-lg shadow-slate-900/10 z-[60] overflow-hidden ${className}`}>
             {children}
         </div>
     );
@@ -440,15 +447,35 @@ function CreateOrgModal({ onClose }: { onClose: () => void }) {
     const [name, setName] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+    // Derives a URL-safe base slug from the org name
+    const toBaseSlug = (s: string) =>
+        s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+    // Generates a 5-char random alphanumeric suffix to guarantee global uniqueness
+    const randomSuffix = () =>
+        Math.random().toString(36).slice(2, 7);
+
+    // The slug preview shown to the user is name-derived only (suffix is added invisibly on submit)
+    const slugPreview = toBaseSlug(name);
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
         const trimmed = name.trim();
         if (!trimmed) return;
-        setIsLoading(true); setError(null);
-        const result = await authClient.organization.create({ name: trimmed, slug: slugify(trimmed) });
-        if (result.error) { setError(result.error.message ?? "Failed to create."); setIsLoading(false); return; }
+        setIsLoading(true);
+        setError(null);
+
+        // Always append a random suffix so identical org names never collide
+        const baseSlug = toBaseSlug(trimmed) || "org";
+        const uniqueSlug = `${baseSlug}-${randomSuffix()}`;
+
+        const result = await authClient.organization.create({ name: trimmed, slug: uniqueSlug });
+        if (result.error) {
+            setError(result.error.message ?? "Failed to create organization. Please try again.");
+            setIsLoading(false);
+            return;
+        }
         if (result.data?.id) await authClient.organization.setActive({ organizationId: result.data.id });
         window.location.reload();
     };
@@ -462,7 +489,7 @@ function CreateOrgModal({ onClose }: { onClose: () => void }) {
                 <h2 className="text-lg font-bold text-slate-900 mb-5">New Organization</h2>
                 <form onSubmit={handleCreate} className="space-y-4">
                     <div>
-                        <label className="block text-xs font-semibold text-slate-500 mb-1.5">Name</label>
+                        <label className="block text-xs font-semibold text-slate-500 mb-1.5">Organization Name</label>
                         <input
                             type="text" value={name}
                             onChange={e => { setName(e.target.value); setError(null); }}
@@ -470,9 +497,22 @@ function CreateOrgModal({ onClose }: { onClose: () => void }) {
                             className="w-full h-10 px-3.5 rounded-md border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 bg-slate-50 placeholder:text-slate-300"
                             autoFocus disabled={isLoading}
                         />
-                        {name.trim() && <p className="mt-1 text-[11px] text-slate-400">Slug: <span className="text-slate-600">{slugify(name)}</span></p>}
+                        {name.trim() && (
+                            <p className="mt-1.5 text-[11px] text-slate-400 flex items-center gap-1">
+                                <span className="font-semibold text-slate-500">Slug:</span>
+                                <code className="text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">
+                                    {slugPreview || "org"}-<span className="text-slate-400">xxxxx</span>
+                                </code>
+                                <span className="text-slate-400">(unique suffix auto-added)</span>
+                            </p>
+                        )}
                     </div>
-                    {error && <p className="text-xs text-rose-600 bg-rose-50 px-3 py-2 rounded-md">{error}</p>}
+                    {error && (
+                        <div className="flex items-start gap-2 text-xs text-rose-700 bg-rose-50 border border-rose-100 px-3 py-2.5 rounded-md">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                            <span>{error}</span>
+                        </div>
+                    )}
                     <div className="flex gap-2.5 pt-1">
                         <button type="button" onClick={onClose} disabled={isLoading} className="flex-1 h-10 rounded-md text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors disabled:opacity-50">Cancel</button>
                         <button type="submit" disabled={isLoading || !name.trim()} className="flex-1 h-10 rounded-md text-sm font-semibold text-white bg-slate-900 hover:bg-black transition-all disabled:opacity-50">
@@ -484,6 +524,7 @@ function CreateOrgModal({ onClose }: { onClose: () => void }) {
         </div>
     );
 }
+
 
 // ── Invite Member Modal ───────────────────────────────────────────────────
 

@@ -113,7 +113,7 @@ export function DateRangePicker({
     };
 
     return (
-        <div className={`relative ${isOpen ? 'z-[99]' : ''}`} ref={containerRef}>
+        <div className={`relative ${isOpen ? 'z-[45]' : ''}`} ref={containerRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex items-center gap-2.5 h-10 px-4 bg-white border border-slate-200 rounded-md hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm active:scale-[0.98]"
@@ -153,7 +153,7 @@ export function DateRangePicker({
             </button>
 
             {isOpen && (
-                <div className={`absolute top-full mt-2 z-[100] bg-white border border-slate-200 rounded-md shadow-2xl shadow-slate-900/10 overflow-hidden flex flex-col md:flex-row ${showRelative && showAbsolute ? "min-w-[320px] md:min-w-[500px]" : "min-w-[240px]"} ${align === "right" ? "right-0" : "left-0"}`}>
+                <div className={`absolute top-full mt-2 z-[45] bg-white border border-slate-200 rounded-md shadow-2xl shadow-slate-900/10 overflow-hidden flex flex-col md:flex-row ${showRelative && showAbsolute ? "min-w-[320px] md:min-w-[500px]" : "min-w-[240px]"} ${align === "right" ? "right-0" : "left-0"}`}>
                     {/* Presets Sidebar */}
                     {showRelative && (
                         <div className="w-full md:w-48 bg-slate-50/50 border-b md:border-b-0 md:border-r border-slate-100 p-2 flex flex-col gap-1">

@@ -1,7 +1,7 @@
 import { Form } from "react-router";
 import { ModalShell, FormActions, inputCls, monoCls, labelCls, sectionLabelCls } from "../ui/shared";
 
-export function AddAccount({ onClose, isSubmitting }: { onClose: () => void; isSubmitting: boolean }) {
+export function AddAccount({ onClose, isSubmitting, error }: { onClose: () => void; isSubmitting: boolean; error?: string }) {
     return (
         <ModalShell
             onClose={onClose}
@@ -71,6 +71,16 @@ export function AddAccount({ onClose, isSubmitting }: { onClose: () => void; isS
                         </div>
                     </div>
                 </div>
+
+                {/* Error Banner */}
+                {error && (
+                    <div className="mx-6 -mt-1 flex items-start gap-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-md px-4 py-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5">
+                            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                        <p className="text-xs font-semibold leading-relaxed">{error}</p>
+                    </div>
+                )}
 
                 <FormActions onClose={onClose} isSubmitting={isSubmitting} submitLabel="Connect Account" />
             </Form>
