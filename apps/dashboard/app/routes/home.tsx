@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import { authClient } from "~/lib/auth-client";
 import type { Route } from "./+types/home";
-import { glassCls, subtleIndigoCls, sectionLabelCls } from "../components/dashboard/shared";
+import { glassCls, subtleIndigoCls, sectionLabelCls } from "../components/dashboard/ui/shared";
 
 export const meta: Route.MetaFunction = () => [
   { title: "FlareFilter | Automated Cloudflare Edge Security" },
@@ -123,13 +123,13 @@ export default function LandingPage() {
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" /></svg>
                             </div>
                             <div className="min-w-0">
-                              <code className="text-[10px] font-bold text-slate-950 font-mono block truncate">IP::{142 + i}.92.{84 + i * 2}.10</code>
+                              <code className="text-[10px] font-bold text-slate-950 font-mono block truncate">Target::{i === 1 ? '142.92.84.10' : i === 2 ? 'AS15169' : i === 3 ? 'US' : 'Mozilla/5.0'}</code>
                               <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Origin::{i === 1 ? 'United States' : 'Germany'}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-4 shrink-0">
                             <span className={`text-[8px] font-black px-2 py-0.5 rounded border ${i === 1 ? 'bg-red-50 text-red-600 border-red-100' : 'bg-slate-50 text-slate-500 border-slate-200'} uppercase tracking-widest`}>
-                              {i === 1 ? 'Blocked' : 'Verified'}
+                              {i === 1 ? 'Log Action' : 'Challenge'}
                             </span>
                             <span className="text-slate-200">•</span>
                             <span className="text-[9px] font-bold text-slate-400 font-mono">2ms ago</span>
@@ -154,7 +154,7 @@ export default function LandingPage() {
                 </div>
               </div>
             </div>
-          </section> 
+          </section>
         </div>
       </div>
     </div>
