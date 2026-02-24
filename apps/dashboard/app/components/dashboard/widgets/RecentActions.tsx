@@ -30,6 +30,18 @@ export function RecentActions({ actions }: { actions: any[] }) {
                     ))
                 )}
             </div>
+
+            {actions.length > 0 && (
+                <div className="px-6 py-3 border-t border-slate-50 bg-slate-50/30 flex justify-center">
+                    <a
+                        href="/dashboard/logs"
+                        className="text-[10px] font-black text-indigo-600 hover:text-indigo-700 uppercase tracking-widest flex items-center gap-1.5 transition-colors group"
+                    >
+                        View Full History
+                        <svg className="w-3 h-3 transition-transform group-hover:translate-x-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                    </a>
+                </div>
+            )}
         </div>
     );
 }

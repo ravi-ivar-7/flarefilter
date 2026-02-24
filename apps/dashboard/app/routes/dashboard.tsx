@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/d1";
 import { cloudflareAccounts, zoneConfigs, addIpToListRules, actionLogs, requestActivity } from "@flarefilter/db/src/schema/zones";
-import { desc, eq, sql, and } from "drizzle-orm";
+import { desc, eq, sql, and, gte, lte } from "drizzle-orm";
 import type { Route } from "./+types/dashboard";
 import { useNavigation, useActionData, useRevalidator, redirect } from "react-router";
 import { getAuth } from "~/lib/auth";
@@ -239,11 +239,45 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 
   const activeRuleConfigs = Object.values(RULE_REGISTRY).filter(c => c.table);
 
+  const url = new URL(request.url);
+  const rangeType = url.searchParams.get("type") || "relative";
+  const relativeValue = url.searchParams.get("relative") || "30m";
+  const startStr = url.searchParams.get("start");
+  const endStr = url.searchParams.get("end");
+  const queryLimit = parseInt(url.searchParams.get("limit") || (tab === "logs" ? "100" : "10"));
+  const zoneIdFilter = url.searchParams.get("zoneId");
+  const actionsFilter = url.searchParams.get("actions");
+
+  const conditions = [eq(actionLogs.tenantId, tenantId)];
+
+  if (zoneIdFilter) {
+    conditions.push(eq(actionLogs.zoneConfigId, zoneIdFilter));
+  }
+  if (actionsFilter) {
+    const list = actionsFilter.split(",").filter(Boolean);
+    if (list.length > 0) {
+      conditions.push(sql`${actionLogs.actionTaken} IN (${sql.join(list.map(l => sql`${l}`), sql`, `)})`);
+    }
+  }
+
+  if (rangeType === "relative") {
+    const num = parseInt(relativeValue);
+    const unit = relativeValue.slice(-1);
+    let ms = 30 * 60000;
+    if (unit === "m") ms = num * 60000;
+    else if (unit === "h") ms = num * 3600000;
+    else if (unit === "d") ms = num * 86400000;
+    conditions.push(gte(actionLogs.timestamp, new Date(Date.now() - ms)));
+  } else if (startStr) {
+    conditions.push(gte(actionLogs.timestamp, new Date(startStr)));
+    if (endStr) conditions.push(lte(actionLogs.timestamp, new Date(endStr)));
+  }
+
   const [accounts, zones, recentActions, [{ count: totalBlocks }], ...ruleResults] = await Promise.all([
     db.select().from(cloudflareAccounts).where(eq(cloudflareAccounts.tenantId, tenantId)).orderBy(desc(cloudflareAccounts.createdAt)),
     db.select().from(zoneConfigs).where(eq(zoneConfigs.tenantId, tenantId)).orderBy(desc(zoneConfigs.createdAt)),
-    db.select().from(actionLogs).where(eq(actionLogs.tenantId, tenantId)).orderBy(desc(actionLogs.timestamp)).limit(tab === "logs" ? 100 : 10),
-    db.select({ count: sql<number>`count(*)` }).from(actionLogs).where(eq(actionLogs.tenantId, tenantId)),
+    db.select().from(actionLogs).where(and(...conditions)).orderBy(desc(actionLogs.timestamp)).limit(queryLimit),
+    db.select({ count: sql<number>`count(*)` }).from(actionLogs).where(and(...conditions)),
     ...activeRuleConfigs.map(c => db.select().from(c.table).where(eq(c.table.tenantId, tenantId)).orderBy(desc(c.table.createdAt)))
   ]);
 
@@ -271,7 +305,23 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
   const [isZoneModalOpen, setIsZoneModalOpen] = useState(false);
   const [ruleModalZoneId, setRuleModalZoneId] = useState<string | null>(null);
   const [selectedRuleType, setSelectedRuleType] = useState<string | null>(null);
-  const [dateRange, setDateRange] = useState<DateRange>(() => {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [dateRange, _setDateRange] = useState<DateRange>(() => {
+    // 1. Try URL first
+    const type = searchParams.get("type") as "relative" | "absolute" | null;
+    if (type) {
+      return {
+        type,
+        relativeValue: searchParams.get("relative") || "30m",
+        start: searchParams.get("start") ? new Date(searchParams.get("start")!) : undefined,
+        end: searchParams.get("end") ? new Date(searchParams.get("end")!) : undefined,
+        live: searchParams.get("live") === "true",
+        refreshInterval: parseInt(searchParams.get("refresh") || "10")
+      };
+    }
+
+    // 2. Try localStorage
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("flarefilter_daterange");
       if (saved) {
@@ -288,8 +338,135 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
     return { type: "relative", relativeValue: "30m", live: false, refreshInterval: 10 };
   });
 
+  const [limit, _setLimit] = useState<number>(() => {
+    // 1. URL
+    const qLimit = searchParams.get("limit");
+    if (qLimit) return parseInt(qLimit);
+
+    // 2. LocalStorage
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("flarefilter_limit");
+      if (saved) return parseInt(saved);
+    }
+
+    return currentTab === "logs" ? 100 : 10;
+  });
+
+
+  const [analyzerZoneId, _setAnalyzerZoneId] = useState<string>(() => {
+    // 1. URL
+    const qZone = searchParams.get("zoneId");
+    if (qZone) return qZone;
+
+    // 2. LocalStorage
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("ff_ips_analyzer_zone");
+      if (saved) return saved;
+    }
+    return "";
+  });
+
+  const [actionsFilter, setActionsFilter] = useState<string[]>(() => {
+    const qActions = searchParams.get("actions");
+    if (qActions) return qActions.split(",").filter(Boolean);
+    return [];
+  });
+
+  const syncToUrl = (range: DateRange, l: number, zoneId: string, actions: string[] = actionsFilter) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("type", range.type);
+    if (range.type === "relative") {
+      params.set("relative", range.relativeValue || "30m");
+      params.delete("start");
+      params.delete("end");
+    } else {
+      params.set("start", range.start?.toISOString() || "");
+      params.set("end", range.end?.toISOString() || "");
+      params.delete("relative");
+    }
+    params.set("live", String(range.live || false));
+    params.set("refresh", String(range.refreshInterval || 10));
+    params.set("limit", String(l));
+    if (zoneId) params.set("zoneId", zoneId);
+    else params.delete("zoneId");
+
+    if (actions.length > 0) params.set("actions", actions.join(","));
+    else params.delete("actions");
+
+    setSearchParams(params, { replace: true, preventScrollReset: true });
+  };
+
+  const setDateRange = (newRange: DateRange) => {
+    _setDateRange(newRange);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("flarefilter_daterange", JSON.stringify(newRange));
+    }
+    syncToUrl(newRange, limit, analyzerZoneId);
+  };
+
+  const setLimit = (newLimit: number) => {
+    _setLimit(newLimit);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("flarefilter_limit", String(newLimit));
+    }
+    syncToUrl(dateRange, newLimit, analyzerZoneId);
+  };
+
+  const setAnalyzerZoneId = (zId: string) => {
+    _setAnalyzerZoneId(zId);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("ff_ips_analyzer_zone", zId);
+    }
+    syncToUrl(dateRange, limit, zId, actionsFilter);
+  };
+
+  const updateActionsFilter = (actions: string[]) => {
+    setActionsFilter(actions);
+    syncToUrl(dateRange, limit, analyzerZoneId, actions);
+  };
+
+  // Sync state to URL on mount if params are missing
   useEffect(() => {
-    localStorage.setItem("flarefilter_daterange", JSON.stringify(dateRange));
+    if (!searchParams.has("type")) {
+      setDateRange(dateRange);
+    }
+  }, []);
+
+  useEffect(() => {
+    const type = searchParams.get("type") as "relative" | "absolute" | null;
+    if (type) {
+      _setDateRange({
+        type,
+        relativeValue: searchParams.get("relative") || "30m",
+        start: searchParams.get("start") ? new Date(searchParams.get("start")!) : undefined,
+        end: searchParams.get("end") ? new Date(searchParams.get("end")!) : undefined,
+        live: searchParams.get("live") === "true",
+        refreshInterval: parseInt(searchParams.get("refresh") || "10")
+      });
+    }
+
+    const qLimit = searchParams.get("limit");
+    if (qLimit) {
+      _setLimit(parseInt(qLimit));
+    }
+
+    const qZone = searchParams.get("zoneId");
+    if (qZone) {
+      _setAnalyzerZoneId(qZone);
+    }
+
+    const qActions = searchParams.get("actions");
+    if (qActions !== null) {
+      setActionsFilter(qActions.split(",").filter(Boolean));
+    } else {
+      setActionsFilter([]);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("flarefilter_daterange", JSON.stringify(dateRange));
+    }
 
     if (!dateRange.live) return;
 
@@ -338,6 +515,9 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
           rules={rules}
           recentActions={recentActions}
           totalBlocks={totalBlocks}
+          limit={limit}
+          onLimitChange={setLimit}
+          onRefresh={() => revalidator.revalidate()}
           onAddAccount={() => setIsAccountModalOpen(true)}
           onAddZone={() => setIsZoneModalOpen(true)}
           onAddRule={(zoneId: string) => setRuleModalZoneId(zoneId)}
@@ -352,6 +532,10 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
           orgName={orgName}
           dateRange={dateRange}
           onDateRangeChange={setDateRange}
+          limit={limit}
+          onLimitChange={setLimit}
+          activeZoneId={analyzerZoneId}
+          onActiveZoneChange={setAnalyzerZoneId}
           isLoading={navigation.state !== "idle"}
         />
       )}
@@ -362,6 +546,13 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
           orgName={orgName}
           dateRange={dateRange}
           onDateRangeChange={setDateRange}
+          limit={limit}
+          onLimitChange={setLimit}
+          activeZoneId={analyzerZoneId}
+          onActiveZoneChange={setAnalyzerZoneId}
+          activeFilters={actionsFilter}
+          onActiveFiltersChange={updateActionsFilter}
+          onRefresh={() => revalidator.revalidate()}
           isLoading={navigation.state !== "idle"}
           recentActions={recentActions}
         />

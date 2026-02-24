@@ -1,4 +1,4 @@
-export function MetricsGrid({ zonesCount, totalBlocks, activeRulesCount }: { zonesCount: number; totalBlocks: number; activeRulesCount: number }) {
+export function MetricsGrid({ zonesCount, totalBlocks, activeRulesCount, rangeLabel }: { zonesCount: number; totalBlocks: number; activeRulesCount: number; rangeLabel?: string }) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-gradient-to-br from-white to-indigo-50/50 border border-indigo-100 p-5 rounded-md shadow-sm relative overflow-hidden group hover:border-indigo-300 transition-colors">
@@ -7,7 +7,14 @@ export function MetricsGrid({ zonesCount, totalBlocks, activeRulesCount }: { zon
             </div>
 
             <div className="bg-gradient-to-br from-white to-slate-50 border border-slate-200 p-5 rounded-md shadow-sm relative overflow-hidden group hover:border-indigo-300 transition-colors">
-                <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Total Actions Logged</p>
+                <div className="flex justify-between items-start">
+                    <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Actions Logged</p>
+                    {rangeLabel && (
+                        <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-md border border-indigo-100 uppercase tracking-tighter">
+                            {rangeLabel}
+                        </span>
+                    )}
+                </div>
                 <p className="text-3xl font-black mt-2 text-slate-900 tracking-tight">{totalBlocks?.toLocaleString() || 0}</p>
             </div>
 

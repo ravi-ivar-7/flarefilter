@@ -9,6 +9,10 @@ export function IPsAnalyzer({
     orgName,
     dateRange,
     onDateRangeChange,
+    limit,
+    onLimitChange,
+    activeZoneId,
+    onActiveZoneChange,
     isLoading: isGlobalLoading
 }: {
     zones: any[];
@@ -16,13 +20,16 @@ export function IPsAnalyzer({
     orgName: string;
     dateRange: DateRange;
     onDateRangeChange: (v: DateRange) => void;
-    isLoading?: boolean;
+    limit: number;
+    onLimitChange: (v: number) => void;
+    activeZoneId: string;
+    onActiveZoneChange: (v: string) => void;
+    isLoading: boolean;
 }) {
     const fetcher = useFetcher();
     const ipListAddFetcher = useFetcher();
     const ipListsFetcher = useFetcher();
-    const [selectedZoneId, setSelectedZoneId] = useState(() => typeof window !== "undefined" ? (localStorage.getItem("ff_ips_analyzer_zone") || "") : "");
-    const [limit, setLimit] = useState(() => typeof window !== "undefined" ? Number(localStorage.getItem("ff_ips_analyzer_limit") || 10) : 10);
+
     const [dimensions, setDimensions] = useState<string[]>(() => {
         if (typeof window === "undefined") return ["clientIP"];
         try {
@@ -58,15 +65,15 @@ export function IPsAnalyzer({
 
     // Fetch CF IP lists when the Add IPs to IP List modal opens
     useEffect(() => {
-        if (!isIpListAddOpen || !selectedZoneId) return;
+        if (!isIpListAddOpen || !activeZoneId) return;
         setIpListAddResult(null); // clear previous feedback
-        const zone = zones.find(z => z.id === selectedZoneId);
+        const zone = zones.find(z => z.id === activeZoneId);
         if (!zone) return;
         const fd = new FormData();
         fd.append("accountRef", zone.cfAccountRef);
         fd.append("type", "lists");
         ipListsFetcher.submit(fd, { method: "post", action: "/api/cloudflare" });
-    }, [isIpListAddOpen, selectedZoneId]);
+    }, [isIpListAddOpen, activeZoneId]);
 
     useEffect(() => {
         if (ipListsFetcher.data && Array.isArray(ipListsFetcher.data)) {
@@ -90,7 +97,7 @@ export function IPsAnalyzer({
     }, [ipListAddFetcher.data]);
 
     const handleIpListAdd = () => {
-        const zone = zones.find(z => z.id === selectedZoneId);
+        const zone = zones.find(z => z.id === activeZoneId);
         if (!zone || !selectedIpListId) return;
         const selectedIps = Array.from(selectedItems)
             .map(i => results[i]?.clientIP)
@@ -111,10 +118,8 @@ export function IPsAnalyzer({
 
 
     useEffect(() => {
-        if (selectedZoneId) localStorage.setItem("ff_ips_analyzer_zone", selectedZoneId);
-        localStorage.setItem("ff_ips_analyzer_limit", limit.toString());
         localStorage.setItem("ff_ips_analyzer_dimensions", JSON.stringify(dimensions));
-    }, [selectedZoneId, limit, dimensions]);
+    }, [dimensions]);
 
     const windowSeconds = useMemo(() => {
         if (dateRange.type === "relative") {
@@ -132,8 +137,8 @@ export function IPsAnalyzer({
     }, [dateRange]);
 
     const handleFetch = () => {
-        if (!selectedZoneId) return;
-        const zone = zones.find(v => v.id === selectedZoneId);
+        if (!activeZoneId) return;
+        const zone = zones.find(v => v.id === activeZoneId);
         if (!zone) return;
 
         const formData = new FormData();
@@ -146,6 +151,25 @@ export function IPsAnalyzer({
 
         fetcher.submit(formData, { method: "post", action: "/api/cloudflare" });
     };
+
+    // Auto-fetch on live or range change
+    useEffect(() => {
+        if (!activeZoneId) return;
+
+        // Always fetch when range or limit changes manually
+        handleFetch();
+
+        if (!dateRange.live) return;
+
+        const intervalMs = (dateRange.refreshInterval || 10) * 1000;
+        const timer = setInterval(() => {
+            if (fetcher.state === "idle") {
+                handleFetch();
+            }
+        }, intervalMs);
+
+        return () => clearInterval(timer);
+    }, [activeZoneId, dateRange.type, dateRange.relativeValue, dateRange.start, dateRange.end, dateRange.live, limit, dimensions.join(",")]);
 
     useEffect(() => {
         if (!fetcher.data) return;
@@ -241,8 +265,8 @@ export function IPsAnalyzer({
 
                     {/* Zone select */}
                     <select
-                        value={selectedZoneId}
-                        onChange={(e) => setSelectedZoneId(e.target.value)}
+                        value={activeZoneId}
+                        onChange={(e) => onActiveZoneChange(e.target.value)}
                         className={`${inputCls} shrink-0 w-auto max-w-[180px] h-[34px] px-2 text-[10px] font-bold bg-white border-slate-200 min-w-[100px] shadow-sm rounded-md focus:ring-slate-950`}
                     >
                         <option value="">Zone...</option>
@@ -336,7 +360,7 @@ export function IPsAnalyzer({
                     <div className="flex items-center rounded-md overflow-hidden border border-slate-900 shadow-sm ml-auto shrink-0">
                         <button
                             onClick={handleFetch}
-                            disabled={!selectedZoneId || isLoading}
+                            disabled={!activeZoneId || isLoading}
                             className="flex items-center justify-center gap-1.5 bg-slate-950 hover:bg-black disabled:opacity-30 disabled:cursor-not-allowed text-white text-[10px] font-bold px-3 h-[34px] transition-colors active:scale-95 whitespace-nowrap"
                         >
                             {isLoading ? (
@@ -357,7 +381,7 @@ export function IPsAnalyzer({
                                 min={1}
                                 max={100}
                                 value={limit}
-                                onChange={(e) => setLimit(Number(e.target.value))}
+                                onChange={(e) => onLimitChange(Number(e.target.value))}
                                 className="h-full pl-2.5 pr-8 text-[11px] font-bold bg-transparent border-0 shadow-none [appearance:textfield] focus:ring-0 text-slate-900 focus:outline-none"
                             />
                             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-400 uppercase pointer-events-none">

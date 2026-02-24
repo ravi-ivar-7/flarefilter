@@ -10,8 +10,15 @@ interface ActionLogsProps {
     orgName: string;
     dateRange: DateRange;
     onDateRangeChange: (v: DateRange) => void;
+    limit: number;
+    onLimitChange: (v: number) => void;
     isLoading?: boolean;
     recentActions: any[];
+    activeZoneId: string;
+    onActiveZoneChange: (v: string) => void;
+    activeFilters: string[];
+    onActiveFiltersChange: (v: string[]) => void;
+    onRefresh: () => void;
 }
 
 export function ActionLogs({
@@ -19,16 +26,18 @@ export function ActionLogs({
     orgName,
     dateRange,
     onDateRangeChange,
+    limit,
+    onLimitChange,
     isLoading,
-    recentActions
+    recentActions,
+    activeZoneId,
+    onActiveZoneChange,
+    activeFilters,
+    onActiveFiltersChange,
+    onRefresh
 }: ActionLogsProps) {
-    const fetcher = useFetcher();
-    const [selectedZoneId, setSelectedZoneId] = useState("");
-    const [limit, setLimit] = useState(100);
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-    const [activeFilters, setActiveFilters] = useState<string[]>([]);
     const filterRef = useRef<HTMLDivElement>(null);
-    const [results, setResults] = useState<any[]>(recentActions || []);
     const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
@@ -56,34 +65,18 @@ export function ActionLogs({
         return 3600;
     }, [dateRange]);
 
-    const handleFetch = () => {
-        const formData = new FormData();
-        formData.append("type", "fetch-logs");
-        if (selectedZoneId) formData.append("zoneId", selectedZoneId);
-        if (activeFilters.length > 0) formData.append("actions", activeFilters.join(","));
-        formData.append("windowSeconds", windowSeconds.toString());
-        formData.append("limit", limit.toString());
-        fetcher.submit(formData, { method: "post", action: "/api/logs" });
-    };
-
-    useEffect(() => {
-        if (fetcher.data && Array.isArray(fetcher.data)) {
-            setResults(fetcher.data);
-        }
-    }, [fetcher.data]);
-
-    const isFetching = fetcher.state !== "idle" || isLoading;
+    const isFetching = isLoading;
 
     const displayedResults = useMemo(() => {
-        if (!searchQuery.trim()) return results;
+        if (!searchQuery.trim()) return recentActions;
         const q = searchQuery.toLowerCase();
-        return results.filter(log =>
+        return recentActions.filter(log =>
             log.targetValue.toLowerCase().includes(q) ||
             log.actionTaken.toLowerCase().includes(q) ||
             log.ruleId.toLowerCase().includes(q) ||
             (log.metadata && log.metadata.toLowerCase().includes(q))
         );
-    }, [results, searchQuery]);
+    }, [recentActions, searchQuery]);
 
     return (
         <div className="flex flex-col gap-4 sm:gap-6">
@@ -123,8 +116,8 @@ export function ActionLogs({
                                                 type="checkbox"
                                                 checked={isChecked}
                                                 onChange={(e) => {
-                                                    if (e.target.checked) setActiveFilters([...activeFilters, opt.id]);
-                                                    else setActiveFilters(activeFilters.filter(f => f !== opt.id));
+                                                    if (e.target.checked) onActiveFiltersChange([...activeFilters, opt.id]);
+                                                    else onActiveFiltersChange(activeFilters.filter(f => f !== opt.id));
                                                 }}
                                                 className="w-4 h-4 rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-600 transition-all cursor-pointer"
                                             />
@@ -144,8 +137,8 @@ export function ActionLogs({
 
                 {/* Zone select (Matches IPs analyzer exactly) */}
                 <select
-                    value={selectedZoneId}
-                    onChange={(e) => setSelectedZoneId(e.target.value)}
+                    value={activeZoneId}
+                    onChange={(e) => onActiveZoneChange(e.target.value)}
                     className={`block w-auto max-w-[180px] h-[34px] px-2 text-[10px] font-bold bg-white border-slate-200 min-w-[100px] shadow-sm rounded-md focus:ring-slate-950 shrink-0`}
                 >
                     <option value="">All Zones</option>
@@ -186,7 +179,7 @@ export function ActionLogs({
                 {/* Fetch + Limit — right side */}
                 <div className="flex items-center rounded-md overflow-hidden border border-slate-900 shadow-sm ml-auto shrink-0">
                     <button
-                        onClick={handleFetch}
+                        onClick={onRefresh}
                         disabled={isFetching}
                         className="flex items-center justify-center gap-1.5 bg-slate-950 hover:bg-black disabled:opacity-30 disabled:cursor-not-allowed text-white text-[10px] font-bold px-3 h-[34px] transition-colors active:scale-95 whitespace-nowrap"
                     >
@@ -208,7 +201,7 @@ export function ActionLogs({
                             min={1}
                             max={100}
                             value={limit}
-                            onChange={(e) => setLimit(Number(e.target.value))}
+                            onChange={(e) => onLimitChange(Number(e.target.value))}
                             className="h-full pl-2.5 pr-8 text-[11px] font-bold bg-transparent border-0 shadow-none [appearance:textfield] focus:ring-0 text-slate-900 focus:outline-none"
                         />
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-400 uppercase pointer-events-none">

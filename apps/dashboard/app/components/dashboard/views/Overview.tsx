@@ -14,6 +14,9 @@ interface OverviewProps {
     rules: any[];
     recentActions: any[];
     totalBlocks: number;
+    limit: number;
+    onLimitChange: (v: number) => void;
+    onRefresh: () => void;
     onAddAccount: () => void;
     onAddZone: () => void;
     onAddRule: (zoneId: string) => void;
@@ -30,6 +33,9 @@ export function Overview({
     rules,
     recentActions,
     totalBlocks,
+    limit,
+    onLimitChange,
+    onRefresh,
     onAddAccount,
     onAddZone,
     onAddRule,
@@ -74,6 +80,7 @@ export function Overview({
                     zonesCount={zones.length}
                     totalBlocks={totalBlocks}
                     activeRulesCount={rules.filter((r: any) => r.isActive).length}
+                    rangeLabel={dateRange.type === "relative" ? `Last ${dateRange.relativeValue}` : "Custom Range"}
                 />
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
