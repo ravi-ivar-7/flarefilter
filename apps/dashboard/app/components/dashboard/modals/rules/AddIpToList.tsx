@@ -2,12 +2,13 @@ import { Form, useFetcher } from "react-router";
 import { useState, useEffect } from "react";
 import { ModalShell, FormActions, inputCls, labelCls, sectionLabelCls } from "../../ui/shared";
 
-export function AddIpToListRuleModal({ zoneId, onClose, isSubmitting, zones, accounts }: {
+export function AddIpToList({ zoneId, onClose, isSubmitting, zones, accounts, config }: {
     zoneId: string;
     onClose: () => void;
     isSubmitting: boolean;
     zones: any[];
     accounts: any[];
+    config: any;
 }) {
     const fetcher = useFetcher();
     const [discoveredLists, setDiscoveredLists] = useState<any[]>([]);
@@ -36,21 +37,26 @@ export function AddIpToListRuleModal({ zoneId, onClose, isSubmitting, zones, acc
         <ModalShell
             onClose={onClose}
             iconBg="bg-emerald-100"
-            title="Add Rule: Add IP to List"
-            subtitle="Block flagged IPs by adding them to a Cloudflare IP List"
-            icon={
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                    <line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-            }
+            title={`Add Rule: ${config.name}`}
+            subtitle={config.description}
+            icon={config.icon}
         >
             <Form method="post" className="px-6 py-5 space-y-5">
-                <input type="hidden" name="intent" value="add_ip_to_list_rule" />
+                <input type="hidden" name="intent" value="add_rule" />
+                <input type="hidden" name="ruleType" value={config.type} />
                 <input type="hidden" name="zoneConfigId" value={zoneId} />
                 <input type="hidden" name="cfListName" value={selectedListName} />
 
-                <div className="bg-gray-50/50 border border-gray-100 rounded-2xl p-4 transition-all hover:bg-white hover:shadow-sm">
+                <div className="bg-gray-50/50 border border-gray-100 rounded-md p-4 transition-all hover:bg-white hover:shadow-sm">
+                    <p className={sectionLabelCls}>Identity</p>
+                    <div>
+                        <label className={labelCls}>Rule Name <span className="text-rose-500">*</span></label>
+                        <input type="text" name="name" placeholder='e.g. "API Rate Limiting"' required className={inputCls} />
+                        <p className="mt-1 text-[10px] text-slate-500 font-medium">Internal name for this rule in FlareFilter.</p>
+                    </div>
+                </div>
+
+                <div className="bg-gray-50/50 border border-gray-100 rounded-md p-4 transition-all hover:bg-white hover:shadow-sm">
                     <p className={sectionLabelCls}>Target list</p>
                     <div className="space-y-3">
                         <div>
@@ -80,7 +86,7 @@ export function AddIpToListRuleModal({ zoneId, onClose, isSubmitting, zones, acc
                     </div>
                 </div>
 
-                <div className="bg-gray-50/50 border border-gray-100 rounded-2xl p-4 transition-all hover:bg-white hover:shadow-sm">
+                <div className="bg-gray-50/50 border border-gray-100 rounded-md p-4 transition-all hover:bg-white hover:shadow-sm">
                     <p className={sectionLabelCls}>Detection thresholds</p>
                     <div className="grid grid-cols-2 gap-4">
                         <div>

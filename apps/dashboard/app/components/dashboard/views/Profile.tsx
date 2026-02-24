@@ -46,13 +46,10 @@ export function Profile({ user, activeOrg, orgs }: { user: any; activeOrg: any; 
                             {user.image ? (
                                 <img src={user.image} className="w-14 h-14 rounded-md border-2 border-white shadow-md object-cover" alt="" />
                             ) : (
-                                <div className="w-14 h-14 rounded-md bg-slate-100 flex items-center justify-center text-slate-400 text-xl font-black border-2 border-white shadow-md">
+                                <div className="w-14 h-14 rounded-md bg-slate-100 flex items-center justify-center text-slate-800 text-xl font-black border-2 border-white shadow-md">
                                     {user.name?.charAt(0).toUpperCase()}
                                 </div>
                             )}
-                            <div className="absolute -bottom-1 -right-1 bg-emerald-500 border-2 border-white w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                            </div>
                         </div>
 
                         <div className="flex-1 flex flex-wrap items-center gap-x-10 gap-y-4 w-full">

@@ -17,6 +17,9 @@ importers:
       '@flarefilter/db':
         specifier: workspace:^
         version: link:../../packages/db
+      '@flarefilter/rules':
+        specifier: workspace:^
+        version: link:../../packages/rules
       better-auth:
         specifier: ^1.1.20
         version: 1.4.18(drizzle-kit@0.31.9)(drizzle-orm@0.39.3(@cloudflare/workers-types@4.20260228.0)(kysely@0.28.11))(next@16.1.6(@babel/core@7.29.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -75,6 +78,9 @@ importers:
       '@flarefilter/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@flarefilter/rules':
+        specifier: workspace:*
+        version: link:../../packages/rules
       cron-parser:
         specifier: ^5.5.0
         version: 5.5.0
@@ -104,6 +110,12 @@ importers:
       drizzle-kit:
         specifier: ^0.31.9
         version: 0.31.9
+
+  packages/rules:
+    dependencies:
+      '@flarefilter/db':
+        specifier: workspace:*
+        version: link:../db
 
 packages:
 

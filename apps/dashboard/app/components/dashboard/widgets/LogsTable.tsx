@@ -43,7 +43,7 @@ export function LogsTable({ logs, zones = [] }: { logs: any[], zones?: any[] }) 
                         <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Target</th>
                         <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Zone</th>
                         <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Action</th>
-                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Mitigated</th>
+                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Activity</th>
                         <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Details</th>
                     </tr>
                 </thead>
@@ -60,7 +60,7 @@ export function LogsTable({ logs, zones = [] }: { logs: any[], zones?: any[] }) 
                                 </td>
                                 <td className="px-6 py-5">
                                     <div className="flex flex-col gap-1">
-                                        <span className="font-mono text-xs font-bold text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-sm group-hover:border-indigo-400 transition-colors whitespace-nowrap inline-block w-max">
+                                        <span className="font-mono text-xs font-bold text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-md shadow-sm group-hover:border-indigo-400 transition-colors whitespace-nowrap inline-block w-max">
                                             {log.targetValue}
                                         </span>
                                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">{log.targetType}</span>
@@ -71,8 +71,8 @@ export function LogsTable({ logs, zones = [] }: { logs: any[], zones?: any[] }) 
                                 </td>
                                 <td className="px-6 py-5">
                                     <div className="flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-                                        <span className="text-[10px] font-black text-rose-600 uppercase tracking-widest bg-rose-50 px-2 py-0.5 rounded-md border border-rose-100">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                                        <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
                                             {log.actionTaken.replace('_', ' ')}
                                         </span>
                                     </div>

@@ -30,6 +30,7 @@ export const zoneConfigs = sqliteTable('zone_configs', {
 // Detection config (threshold, window) lives here because it is specific to this rule.
 export const addIpToListRules = sqliteTable('add_ip_to_list_rules', {
     id: text('id').primaryKey(),
+    name: text('name').notNull().default('IP Mitigation Rule'),
     zoneConfigId: text('zone_config_id').notNull().references(() => zoneConfigs.id),
     tenantId: text('tenant_id').notNull().references(() => organization.id),
     cfListId: text('cf_list_id').notNull(),

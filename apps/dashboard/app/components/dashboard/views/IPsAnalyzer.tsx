@@ -176,7 +176,7 @@ export function IPsAnalyzer({
                     <div className="relative shrink-0" ref={dimensionsRef}>
                         <button
                             onClick={() => setIsDimensionsModalOpen(!isDimensionsModalOpen)}
-                            className="flex items-center justify-center gap-2 px-3 h-[34px] text-[11px] font-bold bg-white border border-slate-200 rounded-xl shadow-sm text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap"
+                            className="flex items-center justify-center gap-2 px-3 h-[34px] text-[11px] font-bold bg-white border border-slate-200 rounded-md shadow-sm text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap"
                         >
                             <svg className="w-3.5 h-3.5 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>
@@ -187,7 +187,7 @@ export function IPsAnalyzer({
                             )}
                         </button>
                         {isDimensionsModalOpen && (
-                            <div className="absolute top-full mt-2 left-0 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden z-50 flex flex-col p-2 gap-1 animate-in fade-in zoom-in-95 duration-100">
+                            <div className="absolute top-full mt-2 left-0 w-64 bg-white rounded-md shadow-xl border border-slate-200 overflow-hidden z-50 flex flex-col p-2 gap-1 animate-in fade-in zoom-in-95 duration-100">
                                 <div className="px-3 py-2 border-b border-slate-100 mb-1">
                                     <div className="text-[10px] font-black uppercase tracking-widest">Grouping Dimensions</div>
                                     <div className="text-[9px] font-medium text-slate-800 leading-tight mt-0.5 italic">Select dimensions then click 'Fetch' to update.</div>
@@ -209,7 +209,7 @@ export function IPsAnalyzer({
                                 ].map(opt => {
                                     const isChecked = dimensions.includes(opt.id);
                                     return (
-                                        <label key={opt.id} className={`flex items-start gap-3 px-3 py-2 border rounded-xl transition-all cursor-pointer ${isChecked ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'border-transparent hover:bg-slate-50'}`}>
+                                        <label key={opt.id} className={`flex items-start gap-3 px-3 py-2 border rounded-md transition-all cursor-pointer ${isChecked ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'border-transparent hover:bg-slate-50'}`}>
                                             <div className="pt-0.5">
                                                 <input
                                                     type="checkbox"
@@ -243,7 +243,7 @@ export function IPsAnalyzer({
                     <select
                         value={selectedZoneId}
                         onChange={(e) => setSelectedZoneId(e.target.value)}
-                        className={`${inputCls} shrink-0 w-auto max-w-[180px] h-[34px] px-2 text-[10px] font-bold bg-white border-slate-200 min-w-[100px] shadow-sm rounded-xl focus:ring-slate-950`}
+                        className={`${inputCls} shrink-0 w-auto max-w-[180px] h-[34px] px-2 text-[10px] font-bold bg-white border-slate-200 min-w-[100px] shadow-sm rounded-md focus:ring-slate-950`}
                     >
                         <option value="">Zone...</option>
                         {zones.map(z => (
@@ -271,7 +271,7 @@ export function IPsAnalyzer({
                         <>
                             <div className="w-px h-6 bg-slate-200 shrink-0" />
 
-                            <div className="flex items-center gap-2 bg-indigo-50/50 border border-indigo-100/50 py-1 px-3 rounded-xl animate-in fade-in slide-in-from-top-2 duration-300 shrink-0">
+                            <div className="flex items-center gap-2 bg-indigo-50/50 border border-indigo-100/50 py-1 px-3 rounded-md animate-in fade-in slide-in-from-top-2 duration-300 shrink-0">
                                 {/* Count */}
                                 <span className="bg-white border border-indigo-200 text-indigo-700 text-[11px] font-black px-2 py-0.5 rounded-md tabular-nums shadow-sm select-none">{selectedItems.size}</span>
                                 <span className="text-[12px] font-bold text-indigo-900 select-none">selected</span>
@@ -282,14 +282,14 @@ export function IPsAnalyzer({
                                 <div className="relative shrink-0" ref={actionRef}>
                                     <button
                                         onClick={() => setIsActionDropdownOpen(!isActionDropdownOpen)}
-                                        className="flex items-center gap-2 px-3 h-[28px] text-[11px] font-bold bg-white border border-indigo-200 hover:border-indigo-300 rounded-lg shadow-sm text-indigo-900 hover:bg-slate-50 transition-colors whitespace-nowrap"
+                                        className="flex items-center gap-2 px-3 h-[28px] text-[11px] font-bold bg-white border border-indigo-200 hover:border-indigo-300 rounded-md shadow-sm text-indigo-900 hover:bg-slate-50 transition-colors whitespace-nowrap"
                                     >
                                         Action
                                         <svg className={`w-3 h-3 text-indigo-400 transition-transform ${isActionDropdownOpen ? 'rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
                                     </button>
 
                                     {isActionDropdownOpen && (
-                                        <div className="absolute top-full mt-2 left-0 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 z-50 flex flex-col p-2 gap-0.5 animate-in fade-in zoom-in-95 duration-100">
+                                        <div className="absolute top-full mt-2 left-0 w-56 bg-white rounded-md shadow-xl border border-slate-200 z-50 flex flex-col p-2 gap-0.5 animate-in fade-in zoom-in-95 duration-100">
                                             <div className="px-3 py-2 border-b border-slate-100 mb-1">
                                                 <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Actions</div>
                                             </div>
@@ -297,9 +297,9 @@ export function IPsAnalyzer({
                                             {/* Add IPs to IP List */}
                                             <button
                                                 onClick={() => { setIsIpListAddOpen(true); setIsActionDropdownOpen(false); }}
-                                                className="flex items-center gap-3 text-left px-3 py-2 rounded-xl transition-all hover:bg-slate-50"
+                                                className="flex items-center gap-3 text-left px-3 py-2 rounded-md transition-all hover:bg-slate-50"
                                             >
-                                                <div className="w-6 h-6 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
+                                                <div className="w-6 h-6 rounded-md bg-indigo-50 flex items-center justify-center shrink-0">
                                                     <svg className="w-3.5 h-3.5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                                                 </div>
                                                 <div>
@@ -309,8 +309,8 @@ export function IPsAnalyzer({
                                             </button>
 
                                             {/* Firewall Rule — coming soon */}
-                                            <button disabled className="flex items-center gap-3 text-left px-3 py-2 rounded-xl opacity-40 cursor-not-allowed">
-                                                <div className="w-6 h-6 rounded-lg bg-rose-50 flex items-center justify-center shrink-0">
+                                            <button disabled className="flex items-center gap-3 text-left px-3 py-2 rounded-md opacity-40 cursor-not-allowed">
+                                                <div className="w-6 h-6 rounded-md bg-rose-50 flex items-center justify-center shrink-0">
                                                     <svg className="w-3.5 h-3.5 text-rose-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" /></svg>
                                                 </div>
                                                 <div>
@@ -333,7 +333,7 @@ export function IPsAnalyzer({
                     )}
 
                     {/* Fetch + Limit — right side */}
-                    <div className="flex items-center rounded-xl overflow-hidden border border-slate-900 shadow-sm ml-auto shrink-0">
+                    <div className="flex items-center rounded-md overflow-hidden border border-slate-900 shadow-sm ml-auto shrink-0">
                         <button
                             onClick={handleFetch}
                             disabled={!selectedZoneId || isLoading}
@@ -371,11 +371,11 @@ export function IPsAnalyzer({
                 {/* Add IPs to IP List Modal */}
                 {isIpListAddOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-150">
-                        <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md animate-in zoom-in-95 duration-200">
+                        <div className="bg-white rounded-md shadow-2xl border border-slate-200 w-full max-w-md animate-in zoom-in-95 duration-200">
 
                             {/* Modal header */}
                             <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-slate-100">
-                                <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+                                <div className="w-9 h-9 rounded-md bg-indigo-50 flex items-center justify-center shrink-0">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                                 </div>
                                 <div>
@@ -393,13 +393,13 @@ export function IPsAnalyzer({
                                 <div>
                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">IPs to add ({selectedIps.length})</p>
                                     {selectedItems.size > selectedIps.length && (
-                                        <p className="mb-2 text-[10px] text-amber-600 font-bold bg-amber-50 border border-amber-100 px-2 py-1.5 rounded-lg">
+                                        <p className="mb-2 text-[10px] text-amber-600 font-bold bg-amber-50 border border-amber-100 px-2 py-1.5 rounded-md">
                                             ⚠ {selectedItems.size - selectedIps.length} selected row(s) have no <code className="bg-amber-100 px-1 rounded">clientIP</code> and will be skipped. Make sure <strong>clientIP</strong> is an active dimension.
                                         </p>
                                     )}
-                                    <div className="flex flex-wrap gap-1.5 p-3 bg-slate-50 border border-slate-200 rounded-xl max-h-28 overflow-y-auto">
+                                    <div className="flex flex-wrap gap-1.5 p-3 bg-slate-50 border border-slate-200 rounded-md max-h-28 overflow-y-auto">
                                         {selectedIps.length > 0 ? selectedIps.map(ip => (
-                                            <span key={ip} className="font-mono text-[11px] font-bold bg-white border border-slate-200 text-slate-800 px-2 py-0.5 rounded-lg shadow-sm">{ip}</span>
+                                            <span key={ip} className="font-mono text-[11px] font-bold bg-white border border-slate-200 text-slate-800 px-2 py-0.5 rounded-md shadow-sm">{ip}</span>
                                         )) : (
                                             <span className="text-[11px] text-amber-600 font-medium italic">No rows with a <code className="bg-amber-50 px-1 rounded">clientIP</code> dimension are selected.</span>
                                         )}
@@ -418,7 +418,7 @@ export function IPsAnalyzer({
                                         <select
                                             value={selectedIpListId}
                                             onChange={e => setSelectedIpListId(e.target.value)}
-                                            className="w-full h-[36px] px-3 text-[12px] font-bold bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                            className="w-full h-[36px] px-3 text-[12px] font-bold bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                                         >
                                             <option value="">{availableIpLists.length === 0 ? "No IP lists found" : "Select an IP list..."}</option>
                                             {availableIpLists.map((l: any) => (
@@ -433,12 +433,12 @@ export function IPsAnalyzer({
 
                                 {/* Error */}
                                 {ipListAddResult?.error && (
-                                    <p className="text-[11px] text-rose-600 font-bold bg-rose-50 border border-rose-100 px-3 py-2 rounded-xl">⚠ {ipListAddResult.error}</p>
+                                    <p className="text-[11px] text-rose-600 font-bold bg-rose-50 border border-rose-100 px-3 py-2 rounded-md">⚠ {ipListAddResult.error}</p>
                                 )}
 
                                 {/* Success */}
                                 {ipListAddResult?.success && (
-                                    <p className="text-[11px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-100 px-3 py-2 rounded-xl">✓ {ipListAddResult.added} IP(s) added successfully!</p>
+                                    <p className="text-[11px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-100 px-3 py-2 rounded-md">✓ {ipListAddResult.added} IP(s) added successfully!</p>
                                 )}
                             </div>
 
@@ -446,14 +446,14 @@ export function IPsAnalyzer({
                             <div className="px-5 pb-5 flex items-center justify-end gap-2">
                                 <button
                                     onClick={() => { setIsIpListAddOpen(false); setSelectedIpListId(""); }}
-                                    className="px-4 py-2 text-[12px] font-bold text-slate-500 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition-colors"
+                                    className="px-4 py-2 text-[12px] font-bold text-slate-500 hover:text-slate-700 rounded-md hover:bg-slate-100 transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleIpListAdd}
                                     disabled={!selectedIpListId || selectedIps.length === 0 || ipListAddFetcher.state === "submitting"}
-                                    className="flex items-center gap-2 px-4 py-2 text-[12px] font-bold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl transition-colors shadow-sm"
+                                    className="flex items-center gap-2 px-4 py-2 text-[12px] font-bold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-md transition-colors shadow-sm"
                                 >
                                     {ipListAddFetcher.state === "submitting" ? (
                                         <><svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Adding...</>
@@ -478,10 +478,10 @@ export function IPsAnalyzer({
                                     </svg>
                                 </div>
                                 <h3 className="text-lg font-bold text-slate-900 mb-2">Data Fetch Failed</h3>
-                                <p className="text-sm text-slate-500 max-w-md bg-white border border-slate-200 p-4 rounded-xl shadow-sm italic break-words">{errorMsg}</p>
+                                <p className="text-sm text-slate-500 max-w-md bg-white border border-slate-200 p-4 rounded-md shadow-sm italic break-words">{errorMsg}</p>
                                 <button
                                     onClick={() => setErrorMsg(null)}
-                                    className="mt-6 text-[11px] font-bold text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg transition-colors uppercase tracking-tight"
+                                    className="mt-6 text-[11px] font-bold text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-md transition-colors uppercase tracking-tight"
                                 >
                                     Dismiss
                                 </button>
@@ -580,7 +580,7 @@ export function IPsAnalyzer({
                                                         if (dim === "clientIP") {
                                                             return (
                                                                 <td key={dim} className="px-8 py-5">
-                                                                    <span className="font-mono text-xs font-bold text-slate-900 bg-white border border-slate-200 px-4 py-1.5 rounded-xl shadow-sm group-hover:border-indigo-400 group-hover:shadow-md group-hover:shadow-indigo-500/5 transition-all whitespace-nowrap">
+                                                                    <span className="font-mono text-xs font-bold text-slate-900 bg-white border border-slate-200 px-4 py-1.5 rounded-md shadow-sm group-hover:border-indigo-400 group-hover:shadow-md group-hover:shadow-indigo-500/5 transition-all whitespace-nowrap">
                                                                         {r[dim] || "Unknown"}
                                                                     </span>
                                                                 </td>
@@ -598,7 +598,7 @@ export function IPsAnalyzer({
                                                         if (dim === "clientCountryName") {
                                                             return (
                                                                 <td key={dim} className="px-8 py-5">
-                                                                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 group-hover:bg-white transition-colors uppercase tracking-tight whitespace-nowrap">
+                                                                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-md border border-slate-200 group-hover:bg-white transition-colors uppercase tracking-tight whitespace-nowrap">
                                                                         {r[dim] || "Global"}
                                                                     </span>
                                                                 </td>
@@ -607,7 +607,7 @@ export function IPsAnalyzer({
                                                         if (dim === "clientRequestPath") {
                                                             return (
                                                                 <td key={dim} className="px-8 py-5">
-                                                                    <span className="text-xs font-black text-slate-700 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 font-mono truncate max-w-[200px] inline-block align-bottom">
+                                                                    <span className="text-xs font-black text-slate-700 bg-slate-50 px-3 py-1.5 rounded-md border border-slate-200 font-mono truncate max-w-[200px] inline-block align-bottom">
                                                                         {r[dim] || "Unknown"}
                                                                     </span>
                                                                 </td>
@@ -616,7 +616,7 @@ export function IPsAnalyzer({
                                                         if (dim === "clientDeviceType") {
                                                             return (
                                                                 <td key={dim} className="px-8 py-5">
-                                                                    <span className="text-[10px] font-bold text-slate-600 bg-white px-3 py-1.5 rounded-lg border border-slate-100 italic truncate max-w-[150px] uppercase inline-block align-bottom">
+                                                                    <span className="text-[10px] font-bold text-slate-600 bg-white px-3 py-1.5 rounded-md border border-slate-100 italic truncate max-w-[150px] uppercase inline-block align-bottom">
                                                                         {r[dim] || "Unknown"}
                                                                     </span>
                                                                 </td>
@@ -625,7 +625,7 @@ export function IPsAnalyzer({
                                                         if (dim === "clientRequestHTTPHost") {
                                                             return (
                                                                 <td key={dim} className="px-8 py-5">
-                                                                    <span className="text-xs font-bold text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-lg italic">
+                                                                    <span className="text-xs font-bold text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-md italic">
                                                                         {r[dim] || "Unknown"}
                                                                     </span>
                                                                 </td>

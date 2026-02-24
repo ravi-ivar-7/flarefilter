@@ -1,8 +1,9 @@
 import { RuleHandlers } from './rules/index';
 import { CloudflareClient } from './lib/cloudflare/client';
 import { ActionLogger } from './lib/actions/logger';
+import { RULES_MANIFEST } from '@flarefilter/rules';
 
-import { addIpToListRules, cloudflareAccounts } from '@flarefilter/db/src/schema/zones';
+import { cloudflareAccounts } from '@flarefilter/db/src/schema/zones';
 import { ZoneConfig } from './rules/interface';
 import { DrizzleD1Database } from 'drizzle-orm/d1';
 import { and, eq } from 'drizzle-orm';
@@ -30,16 +31,17 @@ export class RuleEngine {
         const cf = new CloudflareClient(account.cfAccountId, account.cfApiToken);
         const actionLogger = new ActionLogger(this.db);
 
-        // 2. Fetch all generic active rules for this zone here
-        // NOTE: If we get multiple rule tables (e.g., jsChallengeRules), we should map/concat them together into unified Rule objects
-        const rawAddIpToListRules = await this.db.select().from(addIpToListRules)
-            .where(and(eq(addIpToListRules.zoneConfigId, zone.id), eq(addIpToListRules.isActive, true)));
+        // 2. Fetch all generic active rules for this zone across all rule tables in the shared manifest
+        const ruleTables = Object.values(RULES_MANIFEST).filter(m => m.table);
 
-        const activeRules = [
-            ...rawAddIpToListRules.map(r => ({ ...r, type: 'add_ip_to_list' })),
-            // Add other plugins here in the future
-            // ...rawChallengeRules.map(r => ({...r, type: 'js_challenge'}))
-        ];
+        const ruleResults = await Promise.all(
+            ruleTables.map(t => this.db.select().from(t.table!)
+                .where(and(eq(t.table!.zoneConfigId, zone.id), eq(t.table!.isActive, true))))
+        ) as any[][];
+
+        const activeRules = ruleResults.flatMap((res, i) =>
+            res.map(r => ({ ...r, type: ruleTables[i].type }))
+        );
 
         if (activeRules.length === 0) {
             console.log(`Zone ${zone.name} has no active rules. Skipping.`);

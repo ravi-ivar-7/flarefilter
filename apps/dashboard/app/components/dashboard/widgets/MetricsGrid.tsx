@@ -6,9 +6,9 @@ export function MetricsGrid({ zonesCount, totalBlocks, activeRulesCount }: { zon
                 <p className="text-3xl font-black mt-2 text-indigo-600 tracking-tight">{zonesCount}</p>
             </div>
 
-            <div className="bg-gradient-to-br from-white to-rose-50/50 border border-rose-100 p-5 rounded-md shadow-sm relative overflow-hidden group hover:border-rose-300 transition-colors">
-                <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Malicious IPs Blocked</p>
-                <p className="text-3xl font-black mt-2 text-rose-600 tracking-tight">{totalBlocks?.toLocaleString() || 0}</p>
+            <div className="bg-gradient-to-br from-white to-slate-50 border border-slate-200 p-5 rounded-md shadow-sm relative overflow-hidden group hover:border-indigo-300 transition-colors">
+                <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Total Actions Logged</p>
+                <p className="text-3xl font-black mt-2 text-slate-900 tracking-tight">{totalBlocks?.toLocaleString() || 0}</p>
             </div>
 
             <div className="bg-gradient-to-br from-white to-emerald-50/50 border border-emerald-100 p-5 rounded-md shadow-sm relative overflow-hidden group hover:border-emerald-300 transition-colors">

@@ -6,9 +6,10 @@ import { useNavigation, useActionData, useRevalidator, redirect } from "react-ro
 import { getAuth } from "~/lib/auth";
 import { useState, useEffect } from "react";
 
-import { AddAccountModal } from "~/components/dashboard/modals/AddAccountModal";
-import { AddZoneModal } from "~/components/dashboard/modals/AddZoneModal";
-import { AddIpToListRuleModal } from "~/components/dashboard/modals/rules/AddIpToListRuleModal";
+import { AddAccount } from "~/components/dashboard/modals/AddAccount";
+import { AddZone } from "~/components/dashboard/modals/AddZone";
+import { RuleSelector } from "~/components/dashboard/modals/rules/RuleSelector";
+import { RULE_REGISTRY, type RuleType } from "~/lib/rules/registry";
 import { IPsAnalyzer } from "~/components/dashboard/views/IPsAnalyzer";
 import { Overview } from "~/components/dashboard/views/Overview";
 import { ActionLogs } from "~/components/dashboard/views/ActionLogs";
@@ -91,17 +92,18 @@ export async function action({ request, context }: Route.ActionArgs) {
     return null;
   }
 
-  if (intent === "add_ip_to_list_rule") {
-    const zoneConfigId = formData.get("zoneConfigId") as string;
-    const cfListId = formData.get("cfListId") as string;
-    const cfListName = formData.get("cfListName") as string;
-    const rateLimitThreshold = parseInt(formData.get("rateLimitThreshold") as string) || 10000;
-    const windowSeconds = parseInt(formData.get("windowSeconds") as string) || 300;
-    if (zoneConfigId && cfListId) {
-      await db.insert(addIpToListRules).values({
-        id: crypto.randomUUID(), tenantId, zoneConfigId, cfListId, cfListName,
-        rateLimitThreshold, windowSeconds,
-        createdAt: new Date(), updatedAt: new Date(),
+  if (intent === "add_rule") {
+    const ruleType = formData.get("ruleType") as string;
+    const config = RULE_REGISTRY[ruleType];
+
+    if (config?.table && config.prepareValues) {
+      const values = config.prepareValues(formData);
+      await db.insert(config.table).values({
+        id: crypto.randomUUID(),
+        tenantId,
+        ...values,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
     }
     return null;
@@ -126,10 +128,18 @@ export async function action({ request, context }: Route.ActionArgs) {
   if (intent === "delete_zone") {
     const zoneId = formData.get("zoneId") as string;
     if (zoneId) {
-      // Manual cascade delete
+      // 1. Delete transient logs and activity
       await db.delete(actionLogs).where(eq(actionLogs.zoneConfigId, zoneId));
       await db.delete(requestActivity).where(eq(requestActivity.zoneConfigId, zoneId));
-      await db.delete(addIpToListRules).where(eq(addIpToListRules.zoneConfigId, zoneId));
+
+      // 2. Cascade delete rules across ALL rule tables in the registry
+      for (const config of Object.values(RULE_REGISTRY)) {
+        if (config.table) {
+          await db.delete(config.table).where(eq(config.table.zoneConfigId, zoneId));
+        }
+      }
+
+      // 3. Finally delete the zone itself
       await db.delete(zoneConfigs).where(
         and(eq(zoneConfigs.id, zoneId), eq(zoneConfigs.tenantId, tenantId))
       );
@@ -139,10 +149,13 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   if (intent === "delete_rule") {
     const ruleId = formData.get("ruleId") as string;
-    if (ruleId) {
+    const ruleType = formData.get("ruleType") as string;
+    const config = RULE_REGISTRY[ruleType];
+
+    if (ruleId && config) {
       await db.delete(actionLogs).where(eq(actionLogs.ruleId, ruleId));
-      await db.delete(addIpToListRules).where(
-        and(eq(addIpToListRules.id, ruleId), eq(addIpToListRules.tenantId, tenantId))
+      await db.delete(config.table).where(
+        and(eq(config.table.id, ruleId), eq(config.table.tenantId, tenantId))
       );
     }
     return null;
@@ -157,21 +170,28 @@ export async function action({ request, context }: Route.ActionArgs) {
         .set({ isActive, updatedAt: new Date() })
         .where(and(eq(zoneConfigs.id, zoneId), eq(zoneConfigs.tenantId, tenantId)));
 
-      // 2. Cascade the status to all rules in this zone
-      await db.update(addIpToListRules)
-        .set({ isActive, updatedAt: new Date() })
-        .where(and(eq(addIpToListRules.zoneConfigId, zoneId), eq(addIpToListRules.tenantId, tenantId)));
+      // 2. Cascade the status to all rules in this zone across ALL implemented rule tables in the registry
+      for (const config of Object.values(RULE_REGISTRY)) {
+        if (config.table) {
+          await db.update(config.table)
+            .set({ isActive, updatedAt: new Date() })
+            .where(and(eq(config.table.zoneConfigId, zoneId), eq(config.table.tenantId, tenantId)));
+        }
+      }
     }
     return null;
   }
 
   if (intent === "toggle_rule_status") {
     const ruleId = formData.get("ruleId") as string;
+    const ruleType = formData.get("ruleType") as string;
     const isActive = formData.get("isActive") === "true";
-    if (ruleId) {
-      await db.update(addIpToListRules)
+    const config = RULE_REGISTRY[ruleType];
+
+    if (ruleId && config) {
+      await db.update(config.table)
         .set({ isActive, updatedAt: new Date() })
-        .where(and(eq(addIpToListRules.id, ruleId), eq(addIpToListRules.tenantId, tenantId)));
+        .where(and(eq(config.table.id, ruleId), eq(config.table.tenantId, tenantId)));
     }
     return null;
   }
@@ -217,13 +237,20 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 
   const tab = params.tab || "overview";
 
-  const [accounts, zones, rules, recentActions, [{ count: totalBlocks }]] = await Promise.all([
+  const activeRuleConfigs = Object.values(RULE_REGISTRY).filter(c => c.table);
+
+  const [accounts, zones, recentActions, [{ count: totalBlocks }], ...ruleResults] = await Promise.all([
     db.select().from(cloudflareAccounts).where(eq(cloudflareAccounts.tenantId, tenantId)).orderBy(desc(cloudflareAccounts.createdAt)),
     db.select().from(zoneConfigs).where(eq(zoneConfigs.tenantId, tenantId)).orderBy(desc(zoneConfigs.createdAt)),
-    db.select().from(addIpToListRules).where(eq(addIpToListRules.tenantId, tenantId)).orderBy(desc(addIpToListRules.createdAt)),
     db.select().from(actionLogs).where(eq(actionLogs.tenantId, tenantId)).orderBy(desc(actionLogs.timestamp)).limit(tab === "logs" ? 100 : 10),
     db.select({ count: sql<number>`count(*)` }).from(actionLogs).where(eq(actionLogs.tenantId, tenantId)),
+    ...activeRuleConfigs.map(c => db.select().from(c.table).where(eq(c.table.tenantId, tenantId)).orderBy(desc(c.table.createdAt)))
   ]);
+
+  const rules = ruleResults.flatMap((res, i) => {
+    const type = activeRuleConfigs[i].type;
+    return (res as any[]).map(r => ({ ...r, type }));
+  });
 
   return { user: sessionData.user, orgName, activeOrg, orgs: allOrgs, accounts, zones, rules, recentActions, totalBlocks, currentTab: tab };
 }
@@ -238,11 +265,12 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
 
   const isAddingAccount = navigation.formData?.get("intent") === "add_account";
   const isAddingZone = navigation.formData?.get("intent") === "add_zone";
-  const isAddingRule = navigation.formData?.get("intent") === "add_ip_to_list_rule";
+  const isAddingRule = navigation.formData?.get("intent") === "add_rule";
 
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isZoneModalOpen, setIsZoneModalOpen] = useState(false);
   const [ruleModalZoneId, setRuleModalZoneId] = useState<string | null>(null);
+  const [selectedRuleType, setSelectedRuleType] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRange>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("flarefilter_daterange");
@@ -283,8 +311,8 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
     <div className="pb-8">
 
       {accounts.length === 0 && (
-        <div className="mb-8 flex items-center gap-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
-          <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+        <div className="mb-8 flex items-center gap-4 p-4 bg-amber-50 border border-amber-200 rounded-md">
+          <div className="w-9 h-9 rounded-md bg-amber-100 flex items-center justify-center flex-shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-600">
               <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
             </svg>
@@ -293,7 +321,7 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
             <p className="text-sm font-semibold text-amber-800">No Cloudflare account connected</p>
             <p className="text-xs text-amber-700 mt-0.5">Connect a CF account before adding zones.</p>
           </div>
-          <button onClick={() => setIsAccountModalOpen(true)} className="flex-shrink-0 px-4 py-2 text-sm font-medium text-amber-800 bg-amber-100 hover:bg-amber-200 rounded-xl transition-colors">
+          <button onClick={() => setIsAccountModalOpen(true)} className="flex-shrink-0 px-4 py-2 text-sm font-medium text-amber-800 bg-amber-100 hover:bg-amber-200 rounded-md transition-colors">
             Connect Account
           </button>
         </div>
@@ -343,9 +371,33 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
         <Profile user={user} activeOrg={activeOrg} orgs={orgs} />
       )}
 
-      {isAccountModalOpen && <AddAccountModal onClose={() => setIsAccountModalOpen(false)} isSubmitting={isAddingAccount} />}
-      {isZoneModalOpen && <AddZoneModal onClose={() => setIsZoneModalOpen(false)} isSubmitting={isAddingZone} accounts={accounts} />}
-      {ruleModalZoneId && <AddIpToListRuleModal onClose={() => setRuleModalZoneId(null)} isSubmitting={isAddingRule} zoneId={ruleModalZoneId} accounts={accounts} zones={zones} />}
+      {isAccountModalOpen && <AddAccount onClose={() => setIsAccountModalOpen(false)} isSubmitting={isAddingAccount} />}
+      {isZoneModalOpen && <AddZone onClose={() => setIsZoneModalOpen(false)} isSubmitting={isAddingZone} accounts={accounts} />}
+      {ruleModalZoneId && !selectedRuleType && (
+        <RuleSelector
+          onClose={() => setRuleModalZoneId(null)}
+          onSelect={(type: RuleType) => setSelectedRuleType(type)}
+        />
+      )}
+      {(() => {
+        const config = ruleModalZoneId && selectedRuleType ? RULE_REGISTRY[selectedRuleType] : null;
+        const AddComponent = config?.addComponent;
+        if (!AddComponent) return null;
+
+        return (
+          <AddComponent
+            onClose={() => {
+              setRuleModalZoneId(null);
+              setSelectedRuleType(null);
+            }}
+            isSubmitting={isAddingRule}
+            zoneId={ruleModalZoneId!}
+            accounts={accounts}
+            zones={zones}
+            config={config}
+          />
+        );
+      })()}
     </div>
   );
 }

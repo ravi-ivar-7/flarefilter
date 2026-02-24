@@ -3,7 +3,7 @@ import { useFetcher } from "react-router";
 import { LogsTable } from "../widgets/LogsTable";
 import { DateRangePicker, type DateRange } from "~/components/shared/DateRangePicker";
 
-const inputCls = "block w-full rounded-xl border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500 bg-slate-50 shadow-sm transition-colors text-slate-900";
+const inputCls = "block w-full rounded-md border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500 bg-slate-50 shadow-sm transition-colors text-slate-900";
 
 interface ActionLogsProps {
     zones: any[];
@@ -93,7 +93,7 @@ export function ActionLogs({
                 <div className="relative shrink-0" ref={filterRef}>
                     <button
                         onClick={() => setIsFilterModalOpen(!isFilterModalOpen)}
-                        className="flex items-center justify-center gap-2 px-3 h-[34px] text-[11px] font-bold bg-white border border-slate-200 rounded-xl shadow-sm text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap"
+                        className="flex items-center justify-center gap-2 px-3 h-[34px] text-[11px] font-bold bg-white border border-slate-200 rounded-md shadow-sm text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap"
                     >
                         <svg className="w-3.5 h-3.5 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
@@ -104,9 +104,9 @@ export function ActionLogs({
                         )}
                     </button>
                     {isFilterModalOpen && (
-                        <div className="absolute top-full mt-2 left-0 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden z-50 flex flex-col p-2 gap-1 animate-in fade-in zoom-in-95 duration-100">
+                        <div className="absolute top-full mt-2 left-0 w-64 bg-white rounded-md shadow-xl border border-slate-200 overflow-hidden z-50 flex flex-col p-2 gap-1 animate-in fade-in zoom-in-95 duration-100">
                             <div className="px-3 py-2 border-b border-slate-100 mb-1">
-                                <div className="text-[10px] font-black uppercase tracking-widest">Filter Actions</div>
+                                <div className="text-[10px] font-black tracking-widest">Filter Actions</div>
                                 <div className="text-[9px] font-medium text-slate-800 leading-tight mt-0.5 italic">Filter by rule action taken</div>
                             </div>
                             {[
@@ -117,7 +117,7 @@ export function ActionLogs({
                             ].map(opt => {
                                 const isChecked = activeFilters.includes(opt.id);
                                 return (
-                                    <label key={opt.id} className={`flex items-start gap-3 px-3 py-2 border rounded-xl transition-all cursor-pointer ${isChecked ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'border-transparent hover:bg-slate-50'}`}>
+                                    <label key={opt.id} className={`flex items-start gap-3 px-3 py-2 border rounded-md transition-all cursor-pointer ${isChecked ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'border-transparent hover:bg-slate-50'}`}>
                                         <div className="pt-0.5">
                                             <input
                                                 type="checkbox"
@@ -146,7 +146,7 @@ export function ActionLogs({
                 <select
                     value={selectedZoneId}
                     onChange={(e) => setSelectedZoneId(e.target.value)}
-                    className={`block w-auto max-w-[180px] h-[34px] px-2 text-[10px] font-bold bg-white border-slate-200 min-w-[100px] shadow-sm rounded-xl focus:ring-slate-950 shrink-0`}
+                    className={`block w-auto max-w-[180px] h-[34px] px-2 text-[10px] font-bold bg-white border-slate-200 min-w-[100px] shadow-sm rounded-md focus:ring-slate-950 shrink-0`}
                 >
                     <option value="">All Zones</option>
                     {zones?.map(z => (
@@ -155,7 +155,7 @@ export function ActionLogs({
                 </select>
 
                 {/* Search */}
-                <div className="relative shrink-0 w-full sm:w-[220px] rounded-xl border border-slate-200 ">
+                <div className="relative shrink-0 w-full sm:w-[220px] rounded-md border border-slate-200 ">
                     <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
                         <svg className="w-3.5 h-3.5 text-slate-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -166,7 +166,7 @@ export function ActionLogs({
                         placeholder="Search Target, Rule ID..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className={`${inputCls} h-[34px] pl-8 pr-3 text-[11px] font-bold bg-white/50 border-slate-200 shadow-sm rounded-xl focus:ring-slate-950 placeholder:text-slate-400 placeholder:font-medium`}
+                        className={`${inputCls} h-[34px] pl-8 pr-3 text-[11px] font-bold bg-white/50 border-slate-200 shadow-sm rounded-md focus:ring-slate-950 placeholder:text-slate-400 placeholder:font-medium`}
                     />
                 </div>
 
@@ -184,7 +184,7 @@ export function ActionLogs({
                 </div>
 
                 {/* Fetch + Limit — right side */}
-                <div className="flex items-center rounded-xl overflow-hidden border border-slate-900 shadow-sm ml-auto shrink-0">
+                <div className="flex items-center rounded-md overflow-hidden border border-slate-900 shadow-sm ml-auto shrink-0">
                     <button
                         onClick={handleFetch}
                         disabled={isFetching}

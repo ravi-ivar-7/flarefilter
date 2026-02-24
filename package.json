@@ -11,7 +11,8 @@
     "nuke": "bash scripts/nuke.sh",
     "deploy": "node scripts/deploy-prod.js",
     "build": "pnpm -r run build",
-    "test": "pnpm -r run test"
+    "test": "pnpm -r run test",
+    "typecheck": "pnpm -r run typecheck"
   },
   "keywords": [],
   "author": "",

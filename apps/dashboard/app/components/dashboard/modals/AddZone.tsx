@@ -2,7 +2,7 @@ import { Form, useFetcher } from "react-router";
 import { useState, useEffect } from "react";
 import { ModalShell, FormActions, inputCls, monoCls, labelCls, sectionLabelCls } from "../ui/shared";
 
-export function AddZoneModal({ onClose, isSubmitting, accounts }: {
+export function AddZone({ onClose, isSubmitting, accounts }: {
     onClose: () => void;
     isSubmitting: boolean;
     accounts: any[];
@@ -43,7 +43,7 @@ export function AddZoneModal({ onClose, isSubmitting, accounts }: {
             <Form method="post" className="px-6 py-5 space-y-5">
                 <input type="hidden" name="intent" value="add_zone" />
 
-                <div className="bg-gray-50/50 border border-gray-100 rounded-2xl p-5 space-y-5 transition-all hover:bg-white hover:shadow-sm">
+                <div className="bg-gray-50/50 border border-gray-100 rounded-md p-5 space-y-5 transition-all hover:bg-white hover:shadow-sm">
                     <p className={sectionLabelCls}>Zone Identity</p>
                     <div className="space-y-4">
                         <div>

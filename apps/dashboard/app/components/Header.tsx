@@ -72,7 +72,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                         {onToggleSidebar && (
                             <button
                                 onClick={onToggleSidebar}
-                                className="p-2 -ml-2 rounded-lg text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
+                                className="p-2 -ml-2 rounded-md text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
                                 aria-label="Toggle Sidebar"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16m-7 6h7" /></svg>
@@ -89,7 +89,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                                 <div className="ml-3 h-5 w-px bg-slate-200 flex-shrink-0" />
                                 <Link
                                     to="/dashboard"
-                                    className="ml-1 h-9 px-4 flex items-center font-semibold bg-slate-50/50 hover:bg-slate-100 active:scale-95 rounded-lg transition-all flex-shrink-0"
+                                    className="ml-1 h-9 px-4 flex items-center font-semibold bg-slate-50/50 hover:bg-slate-100 active:scale-95 rounded-md transition-all flex-shrink-0"
                                 >
                                     Dashboard
                                 </Link>
@@ -100,7 +100,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
 
                         {session?.user && (
                             <div className="flex items-center min-w-0" ref={orgRef}>
-                                <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 overflow-hidden min-w-0">
+                                <div className="flex items-center rounded-md border border-slate-200 bg-slate-50 overflow-hidden min-w-0">
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
@@ -142,7 +142,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                                                     </button>
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); setIsInviteOpen(true); setIsOrgOpen(false); }}
-                                                        className="ml-2 w-8 h-8 flex items-center justify-center rounded-lg bg-violet-50 text-violet-600 border border-violet-100 hover:bg-violet-100 hover:text-violet-700 transition-all shrink-0 shadow-sm"
+                                                        className="ml-2 w-8 h-8 flex items-center justify-center rounded-md bg-violet-50 text-violet-600 border border-violet-100 hover:bg-violet-100 hover:text-violet-700 transition-all shrink-0 shadow-sm"
                                                         title="Invite Members"
                                                     >
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -185,7 +185,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                             {onToggleSidebar && (
                                 <button
                                     onClick={onToggleSidebar}
-                                    className="md:hidden p-2 -ml-2 rounded-lg text-slate-500 hover:bg-slate-50"
+                                    className="md:hidden p-2 -ml-2 rounded-md text-slate-500 hover:bg-slate-50"
                                     aria-label="Toggle Sidebar"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16m-7 6h7" /></svg>
@@ -215,7 +215,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                                                 <circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" />
                                             </svg>
                                         </button>
-                                        <div className="absolute left-0 top-full mt-3 w-72 p-4 bg-slate-950 text-white text-[12px] font-medium rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 leading-relaxed border border-white/10 pointer-events-none">
+                                        <div className="absolute left-0 top-full mt-3 w-72 p-4 bg-slate-950 text-white text-[12px] font-medium rounded-md shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 leading-relaxed border border-white/10 pointer-events-none">
                                             <div className="absolute -top-1 left-4 w-2.5 h-2.5 bg-slate-950 rotate-45" />
                                             <p className="opacity-90">{pageSubtext}</p>
                                         </div>
@@ -244,7 +244,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                             {/* Org switcher */}
                             {session?.user && (
                                 <div className="relative" ref={orgRef}>
-                                    <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 overflow-hidden">
+                                    <div className="flex items-center rounded-md border border-slate-200 bg-slate-50 overflow-hidden">
                                         <button
                                             onClick={() => setIsOrgOpen(v => !v)}
                                             className="flex items-center gap-2 h-9 px-3 text-sm font-semibold text-slate-700 hover:bg-white transition-all min-w-0 max-w-[170px]"
@@ -287,7 +287,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                                                         </button>
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); setIsInviteOpen(true); setIsOrgOpen(false); }}
-                                                            className="mr-1.5 w-7 h-7 flex items-center justify-center rounded-lg bg-violet-50 text-violet-600 border border-violet-100 hover:bg-violet-100 hover:text-violet-700 transition-all shrink-0 shadow-sm"
+                                                            className="mr-1.5 w-7 h-7 flex items-center justify-center rounded-md bg-violet-50 text-violet-600 border border-violet-100 hover:bg-violet-100 hover:text-violet-700 transition-all shrink-0 shadow-sm"
                                                             title="Invite Members"
                                                         >
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -303,7 +303,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                                             <div className="border-t border-slate-100 p-1.5">
                                                 <button
                                                     onClick={() => { setIsOrgOpen(false); setIsCreateOrgOpen(true); }}
-                                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+                                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-md transition-colors"
                                                 >
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                                                     New Organization
@@ -321,7 +321,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                                 <div className="relative" ref={userRef}>
                                     <button
                                         onClick={() => setIsUserOpen(v => !v)}
-                                        className="flex items-center gap-2 h-9 pl-1 pr-2.5 rounded-lg hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all"
+                                        className="flex items-center gap-2 h-9 pl-1 pr-2.5 rounded-md hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all"
                                     >
                                         <UserAvatar name={session.user.name} />
                                         <span className="text-sm font-semibold text-slate-700 max-w-[100px] truncate hidden lg:block">
@@ -357,7 +357,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                             ) : (
                                 <Link
                                     to="/auth?mode=login"
-                                    className="inline-flex items-center gap-1.5 h-9 px-4 bg-slate-900 text-white text-sm font-semibold rounded-lg hover:bg-black transition-all active:scale-95"
+                                    className="inline-flex items-center gap-1.5 h-9 px-4 bg-slate-900 text-white text-sm font-semibold rounded-md hover:bg-black transition-all active:scale-95"
                                 >
                                     Get Started
                                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
@@ -380,7 +380,7 @@ function NavLink({ to, active, children }: { to: string; active: boolean; childr
     return (
         <Link
             to={to}
-            className={`h-9 px-4 flex items-center font-semibold rounded-lg transition-all active:scale-95 ${active ? "text-slate-900 bg-slate-100" : "text-slate-500 bg-slate-50/50 hover:bg-slate-100 hover:text-slate-900"
+            className={`h-9 px-4 flex items-center font-semibold rounded-md transition-all active:scale-95 ${active ? "text-slate-900 bg-slate-100" : "text-slate-500 bg-slate-50/50 hover:bg-slate-100 hover:text-slate-900"
                 }`}
         >
             {children}
@@ -390,7 +390,7 @@ function NavLink({ to, active, children }: { to: string; active: boolean; childr
 
 function Dropdown({ children, className }: { children: React.ReactNode; className?: string }) {
     return (
-        <div className={`absolute top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-lg shadow-slate-900/10 z-50 overflow-hidden ${className}`}>
+        <div className={`absolute top-full mt-2 bg-white border border-slate-200 rounded-md shadow-lg shadow-slate-900/10 z-50 overflow-hidden ${className}`}>
             {children}
         </div>
     );
@@ -400,7 +400,7 @@ function DropdownItem({ icon, onClick, danger, children }: { icon: React.ReactNo
     return (
         <button
             onClick={onClick}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${danger ? "text-rose-600 hover:bg-rose-50" : "text-slate-700 hover:bg-slate-50"
+            className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-md transition-colors ${danger ? "text-rose-600 hover:bg-rose-50" : "text-slate-700 hover:bg-slate-50"
                 }`}
         >
             {icon}
@@ -455,8 +455,8 @@ function CreateOrgModal({ onClose }: { onClose: () => void }) {
 
     return (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4" onClick={onClose}>
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 relative" onClick={e => e.stopPropagation()}>
-                <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
+            <div className="bg-white rounded-md shadow-2xl w-full max-w-sm p-6 relative" onClick={e => e.stopPropagation()}>
+                <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
                 <h2 className="text-lg font-bold text-slate-900 mb-5">New Organization</h2>
@@ -467,15 +467,15 @@ function CreateOrgModal({ onClose }: { onClose: () => void }) {
                             type="text" value={name}
                             onChange={e => { setName(e.target.value); setError(null); }}
                             placeholder="e.g. Acme Corp"
-                            className="w-full h-10 px-3.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 bg-slate-50 placeholder:text-slate-300"
+                            className="w-full h-10 px-3.5 rounded-md border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 bg-slate-50 placeholder:text-slate-300"
                             autoFocus disabled={isLoading}
                         />
                         {name.trim() && <p className="mt-1 text-[11px] text-slate-400">Slug: <span className="text-slate-600">{slugify(name)}</span></p>}
                     </div>
-                    {error && <p className="text-xs text-rose-600 bg-rose-50 px-3 py-2 rounded-lg">{error}</p>}
+                    {error && <p className="text-xs text-rose-600 bg-rose-50 px-3 py-2 rounded-md">{error}</p>}
                     <div className="flex gap-2.5 pt-1">
-                        <button type="button" onClick={onClose} disabled={isLoading} className="flex-1 h-10 rounded-lg text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors disabled:opacity-50">Cancel</button>
-                        <button type="submit" disabled={isLoading || !name.trim()} className="flex-1 h-10 rounded-lg text-sm font-semibold text-white bg-slate-900 hover:bg-black transition-all disabled:opacity-50">
+                        <button type="button" onClick={onClose} disabled={isLoading} className="flex-1 h-10 rounded-md text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors disabled:opacity-50">Cancel</button>
+                        <button type="submit" disabled={isLoading || !name.trim()} className="flex-1 h-10 rounded-md text-sm font-semibold text-white bg-slate-900 hover:bg-black transition-all disabled:opacity-50">
                             {isLoading ? "Creating…" : "Create"}
                         </button>
                     </div>
@@ -494,12 +494,12 @@ function InviteMemberModal({ onClose }: { onClose: () => void }) {
 
     return (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4" onClick={onClose}>
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 relative" onClick={e => e.stopPropagation()}>
-                <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
+            <div className="bg-white rounded-md shadow-2xl w-full max-w-sm p-6 relative" onClick={e => e.stopPropagation()}>
+                <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
                 <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-md bg-violet-100 flex items-center justify-center">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-violet-600">
                             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
                         </svg>
@@ -517,7 +517,7 @@ function InviteMemberModal({ onClose }: { onClose: () => void }) {
                         </div>
                         <p className="font-bold text-slate-900">Success!</p>
                         <p className="text-sm text-slate-500 mt-1 mb-6">Invite sent to {email}</p>
-                        <button onClick={onClose} className="w-full h-11 rounded-lg text-sm font-bold text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors">Done</button>
+                        <button onClick={onClose} className="w-full h-11 rounded-md text-sm font-bold text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors">Done</button>
                     </div>
                 ) : (
                     <form onSubmit={(e) => { e.preventDefault(); setSubmitted(true); }} className="space-y-5">
@@ -526,7 +526,7 @@ function InviteMemberModal({ onClose }: { onClose: () => void }) {
                             <input
                                 type="email" value={email} onChange={e => setEmail(e.target.value)}
                                 placeholder="name@company.com" required autoFocus
-                                className="w-full h-11 px-4 rounded-xl border border-slate-200 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-slate-950/5 focus:border-slate-950 bg-slate-50 placeholder:text-slate-300"
+                                className="w-full h-11 px-4 rounded-md border border-slate-200 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-slate-950/5 focus:border-slate-950 bg-slate-50 placeholder:text-slate-300"
                             />
                         </div>
                         <div className="space-y-1.5">
@@ -538,7 +538,7 @@ function InviteMemberModal({ onClose }: { onClose: () => void }) {
                                 ].map((r) => (
                                     <button
                                         key={r.value} type="button" onClick={() => setRole(r.value)}
-                                        className={`h-11 px-3 rounded-lg border text-sm font-bold transition-all ${role === r.value ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"}`}
+                                        className={`h-11 px-3 rounded-md border text-sm font-bold transition-all ${role === r.value ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"}`}
                                     >
                                         {r.label}
                                     </button>
@@ -546,8 +546,8 @@ function InviteMemberModal({ onClose }: { onClose: () => void }) {
                             </div>
                         </div>
                         <div className="flex gap-2.5 pt-2">
-                            <button type="button" onClick={onClose} className="flex-1 h-11 rounded-xl text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">Cancel</button>
-                            <button type="submit" disabled={!email} className="flex-1 h-11 rounded-xl text-sm font-bold text-white bg-slate-900 hover:bg-black transition-all shadow-lg shadow-slate-900/10 disabled:opacity-50">Send Invite</button>
+                            <button type="button" onClick={onClose} className="flex-1 h-11 rounded-md text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">Cancel</button>
+                            <button type="submit" disabled={!email} className="flex-1 h-11 rounded-md text-sm font-bold text-white bg-slate-900 hover:bg-black transition-all shadow-lg shadow-slate-900/10 disabled:opacity-50">Send Invite</button>
                         </div>
                     </form>
                 )}

@@ -10,7 +10,7 @@ export function ConnectedAccounts({ accounts, onAdd, error }: {
     return (
         <div>
             <div className="flex items-center justify-between mb-4 px-1">
-                <h2 className="font-semibold">
+                <h2 className="font-bold uppercase">
                     Connected Cloudflare Accounts
                 </h2>
             </div>

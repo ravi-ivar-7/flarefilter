@@ -16,7 +16,7 @@ export class AddIpToListRule implements RuleHandler {
             );
 
             if (flaggedIPs.length === 0) {
-                console.log(`  No threats for rule ${rule.id}.`);
+                console.log(`  No activity found for rule ${rule.id}.`);
                 return;
             }
 

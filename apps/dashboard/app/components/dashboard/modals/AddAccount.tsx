@@ -1,7 +1,7 @@
 import { Form } from "react-router";
 import { ModalShell, FormActions, inputCls, monoCls, labelCls, sectionLabelCls } from "../ui/shared";
 
-export function AddAccountModal({ onClose, isSubmitting }: { onClose: () => void; isSubmitting: boolean }) {
+export function AddAccount({ onClose, isSubmitting }: { onClose: () => void; isSubmitting: boolean }) {
     return (
         <ModalShell
             onClose={onClose}
@@ -17,7 +17,7 @@ export function AddAccountModal({ onClose, isSubmitting }: { onClose: () => void
             <Form method="post" className="px-6 py-5 space-y-5">
                 <input type="hidden" name="intent" value="add_account" />
 
-                <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3.5 space-y-2.5">
+                <div className="rounded-md border border-blue-100 bg-blue-50 px-4 py-3.5 space-y-2.5">
                     <div className="flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500 flex-shrink-0">
                             <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
