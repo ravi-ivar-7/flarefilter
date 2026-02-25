@@ -55,21 +55,8 @@ export function Profile({ user, activeOrg, orgs }: { user: any; activeOrg: any; 
     };
 
     return (
-        <div className="flex flex-col gap-6">
-            {/* Minimalist Header */}
-            <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/60 px-4 py-3 flex flex-wrap items-center justify-between w-full gap-3">
-                <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-md bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600 shadow-sm transition-colors hover:border-indigo-200 hover:text-indigo-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-                    </div>
-                    <div className="flex flex-col">
-                        <h1 className="text-sm font-black text-slate-900 tracking-tight leading-none">Settings</h1>
-                        <p className="text-[10px] font-bold text-slate-400 tracking-widest mt-1.5 uppercase leading-none">Management & Control</p>
-                    </div>
-                </div>
+        <div className="flex flex-col gap-6 mt-10">
 
-
-            </header>
 
             <div className="px-4 flex flex-col gap-8 w-full pb-12">
                 {/* ─── Card 1: User Profile Row ─── */}
@@ -77,7 +64,7 @@ export function Profile({ user, activeOrg, orgs }: { user: any; activeOrg: any; 
                     <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/30 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <span className="w-1 h-3 bg-indigo-500 rounded-full" />
-                            <h2 className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Identity Profile</h2>
+                            <h2 className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Profile</h2>
                         </div>
                     </div>
 

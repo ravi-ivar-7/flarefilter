@@ -8,7 +8,7 @@ export interface ActionLogParams {
     actionTaken: string;
     targetType: string;
     targetValue: string;
-    requestCount: number;
+    requestCount?: number | null;
     metadata?: string;
     timestamp?: Date;
 }
@@ -41,7 +41,7 @@ export class ActionLogger {
             actionTaken: p.actionTaken,
             targetType: p.targetType,
             targetValue: p.targetValue,
-            requestCount: p.requestCount,
+            requestCount: p.requestCount ?? null,
             metadata: p.metadata,
             timestamp: p.timestamp ?? now,
         }));

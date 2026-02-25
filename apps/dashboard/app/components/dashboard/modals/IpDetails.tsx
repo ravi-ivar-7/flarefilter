@@ -84,8 +84,8 @@ export function IpDetails({
     const lon = rawData?.longitude ?? rawData?.lon;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-150">
-            <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-5xl animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col">
+        <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-150">
+            <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-5xl animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col">
 
                 {/* Header */}
                 <div className="flex items-center gap-4 px-6 pt-6 pb-5 border-b border-slate-100 bg-slate-50/50">

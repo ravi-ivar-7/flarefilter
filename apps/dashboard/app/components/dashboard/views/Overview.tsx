@@ -60,7 +60,7 @@ export function Overview({
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-indigo-500"></span>
                             </span>
-                            <span className="text-[9px] font-black uppercase tracking-widest">Feed Live</span>
+                            <span className="text-[9px] font-black uppercase tracking-widest">Live</span>
                         </div>
                     )}
                 </div>
@@ -124,7 +124,7 @@ export function Overview({
                     />
                     <div className="relative w-full h-full min-h-[400px]">
                         <div className="absolute inset-0">
-                            <RecentActions actions={recentActions} />
+                            <RecentActions actions={recentActions} isLive={dateRange.live} zones={zones} />
                         </div>
                     </div>
                 </div>

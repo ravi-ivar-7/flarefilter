@@ -1,33 +1,64 @@
-export function RecentActions({ actions }: { actions: any[] }) {
+export function RecentActions({ actions, isLive = false, zones = [] }: { actions: any[], isLive?: boolean, zones?: any[] }) {
+    const timeAgo = (dateInput: Date | string) => {
+        const time = new Date(dateInput).getTime();
+        const diff = Math.floor((Date.now() - time) / 1000);
+        if (diff < 60) return `${diff}s`;
+        if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+        return `${Math.floor(diff / 86400)}d`;
+    };
+
     return (
         <div className="bg-white border border-gray-200 rounded-md shadow-sm overflow-hidden flex flex-col h-full w-full">
             <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center shrink-0">
                 <h2 className="text-sm font-bold text-black uppercase tracking-wider text-slate-900">Recent Actions</h2>
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-500/10 border border-indigo-200/50 text-indigo-600 text-[10px] font-black uppercase tracking-widest animate-pulse shrink-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                    Live Activity
-                </div>
+                {isLive && (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-600 text-[10px] font-black uppercase tracking-widest shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                        Live Activity
+                    </div>
+                )}
             </div>
 
-            <div className="p-5 space-y-4 flex-1 overflow-y-auto min-h-0 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar divide-y divide-slate-100">
                 {actions.length === 0 ? (
                     <div className="py-12 text-center text-slate-400">
                         <p className="text-sm font-medium italic">No recent actions logged.</p>
                     </div>
                 ) : (
-                    actions.map((action) => (
-                        <div key={action.id} className="p-4 rounded-md border border-slate-100 bg-gradient-to-br from-white to-slate-50/30">
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="font-mono text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md font-black shadow-sm tracking-tight">{action.targetValue}</span>
-                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest opacity-80 italic">Action Logged</span>
+                    actions.map((action) => {
+                        const zoneName = zones.find(z => z.id === action.zoneConfigId)?.name || "";
+                        return (
+                            <div key={action.id} className="p-3 hover:bg-slate-50 transition-colors flex items-center justify-between gap-3 group">
+                                <div className="flex items-center gap-2 sm:gap-4 overflow-hidden">
+                                    <span className="text-[10px] font-bold text-slate-400 w-10 sm:w-12 shrink-0 text-right group-hover:text-slate-500 transition-colors whitespace-nowrap">
+                                        {timeAgo(action.timestamp)} ago
+                                    </span>
+
+                                    <span className="font-mono text-[11px] text-slate-700 font-bold px-1.5 py-0.5 bg-slate-100 rounded border border-slate-200 truncate max-w-[100px] sm:max-w-[140px]">
+                                        {action.targetValue}
+                                    </span>
+
+                                    {zoneName && (
+                                        <span className="text-[9px] font-bold text-slate-500 truncate max-w-[80px] hidden lg:inline-block">
+                                            {zoneName}
+                                        </span>
+                                    )}
+
+                                    <span className="text-[8px] sm:text-[9px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 shrink-0 hidden sm:inline-block">
+                                        {action.actionTaken?.replace('_', ' ') || 'ACTION'}
+                                    </span>
+                                </div>
+
+                                <div className="flex items-center gap-1 shrink-0 bg-white border border-slate-100 px-2 py-0.5 rounded-md shadow-sm">
+                                    <span className={`text-[11px] font-black tabular-nums tracking-tight ${action.requestCount ? 'bg-gradient-to-br from-slate-900 to-slate-700 bg-clip-text text-transparent' : 'text-slate-400'}`}>
+                                        {action.requestCount ? action.requestCount.toLocaleString() : '—'}
+                                    </span>
+                                    {action.requestCount && <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Hits</span>}
+                                </div>
                             </div>
-                            <div className="bg-white/60 p-2.5 rounded-md border border-slate-100 shadow-sm">
-                                <span className="text-xs text-slate-700 font-medium tracking-tight">
-                                    Processed <span className="text-indigo-600 font-black">{action.requestCount?.toLocaleString()}</span> requests
-                                </span>
-                            </div>
-                        </div>
-                    ))
+                        );
+                    })
                 )}
             </div>
 

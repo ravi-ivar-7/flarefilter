@@ -31,12 +31,12 @@ export function IPsAnalyzer({
     const fetcher = useFetcher();
 
     const [dimensions, setDimensions] = useState<string[]>(() => {
-        if (typeof window === "undefined") return ["clientIP"];
+        if (typeof window === "undefined") return ["clientIP", "clientCountryName", "clientRequestPath"];
         try {
             const saved = localStorage.getItem("ff_ips_analyzer_dimensions");
             if (saved) return JSON.parse(saved);
         } catch (e) { }
-        return ["clientIP"];
+        return ["clientIP", "clientCountryName", "clientRequestPath"];
     });
     const [results, setResults] = useState<any[]>([]);
     const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
@@ -219,16 +219,27 @@ export function IPsAnalyzer({
                     </div>
 
                     {/* Zone select */}
-                    <select
-                        value={activeZoneId}
-                        onChange={(e) => onActiveZoneChange(e.target.value)}
-                        className={`${inputCls} shrink-0 w-auto max-w-[180px] h-[34px] px-2 text-[10px] font-bold bg-white border-slate-200 min-w-[100px] shadow-sm rounded-md focus:ring-slate-950`}
-                    >
-                        <option value="">Zone...</option>
-                        {zones.map(z => (
-                            <option key={z.id} value={z.id}>{z.name}</option>
-                        ))}
-                    </select>
+                    <div className="relative shrink-0 flex items-center">
+                        {!activeZoneId && (
+                            <div className="absolute left-2.5 z-10 pointer-events-none text-amber-500 animate-pulse">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                                    <line x1="12" y1="9" x2="12" y2="13" />
+                                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                                </svg>
+                            </div>
+                        )}
+                        <select
+                            value={activeZoneId}
+                            onChange={(e) => onActiveZoneChange(e.target.value)}
+                            className={`${inputCls} relative w-auto max-w-[180px] h-[34px] ${!activeZoneId ? 'pl-7 pr-8 border-amber-300 bg-amber-50/30 text-amber-900 ring-1 ring-amber-200' : 'px-2 border-slate-200 text-slate-900'} text-[10px] font-bold bg-white min-w-[100px] shadow-sm rounded-md focus:ring-slate-950 transition-all`}
+                        >
+                            <option value="">Zone...</option>
+                            {zones.map(z => (
+                                <option key={z.id} value={z.id}>{z.name}</option>
+                            ))}
+                        </select>
+                    </div>
 
 
                     {/* Separator */}
@@ -389,9 +400,23 @@ export function IPsAnalyzer({
                                     <div className="absolute inset-0 bg-indigo-500/5 rounded-[2rem] animate-pulse" />
                                 </div>
                                 <h3 className="text-xl font-bold text-slate-900 uppercase tracking-tight italic">No insights yet</h3>
-                                <p className="text-sm text-slate-500 mt-3 max-w-[320px] font-medium leading-relaxed">
-                                    Pick a dimension (IPs, Paths, etc.) and hit <span className="text-indigo-600 font-bold underline decoration-indigo-200 underline-offset-4 tracking-tighter uppercase">Fetch Data</span> to reveal traffic patterns.
-                                </p>
+                                <div className="mt-5 text-left bg-slate-50 border border-slate-200 rounded-xl p-5 max-w-sm w-full mx-auto">
+                                    <p className="text-[13px] font-bold text-slate-700 mb-3">Why am I seeing this?</p>
+                                    <ul className="text-xs text-slate-500 font-medium space-y-2.5">
+                                        <li className="flex items-start gap-2">
+                                            <svg className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                                            <span><strong className="text-slate-700">Time Range:</strong> There genuinely might be no traffic in the current time frame. Try shifting the absolute date back or expanding the relative range.</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <svg className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="5" rx="2" /><line x1="2" x2="22" y1="10" y2="10" /></svg>
+                                            <span><strong className="text-slate-700">Zone Restriction:</strong> You might be filtering by a specific zone that hasn't received any requests. Try switching the dropdown to "All Zones".</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <svg className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></svg>
+                                            <span><strong className="text-slate-700">Fetch Missing:</strong> After adjusting the time range or dimensions, make sure to click the <strong>FETCH</strong> button to load data!</span>
+                                        </li>
+                                    </ul>
+                                </div>
                             </div>
                         ) : (
                             <div className="relative overflow-x-auto custom-scrollbar bg-white border border-slate-200 shadow-sm ">

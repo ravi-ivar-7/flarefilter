@@ -368,18 +368,11 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   const endStr = url.searchParams.get("end");
   const queryLimit = parseInt(url.searchParams.get("limit") || (tab === "logs" ? "100" : "10"));
   const zoneIdFilter = url.searchParams.get("zoneId");
-  const actionsFilter = url.searchParams.get("actions");
 
   const conditions = [eq(actionLogs.tenantId, tenantId)];
 
   if (zoneIdFilter) {
     conditions.push(eq(actionLogs.zoneConfigId, zoneIdFilter));
-  }
-  if (actionsFilter) {
-    const list = actionsFilter.split(",").filter(Boolean);
-    if (list.length > 0) {
-      conditions.push(sql`${actionLogs.actionTaken} IN (${sql.join(list.map(l => sql`${l}`), sql`, `)})`);
-    }
   }
 
   if (rangeType === "relative") {
@@ -488,13 +481,7 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
     return "";
   });
 
-  const [actionsFilter, setActionsFilter] = useState<string[]>(() => {
-    const qActions = searchParams.get("actions");
-    if (qActions) return qActions.split(",").filter(Boolean);
-    return [];
-  });
-
-  const syncToUrl = (range: DateRange, l: number, zoneId: string, actions: string[] = actionsFilter) => {
+  const syncToUrl = (range: DateRange, l: number, zoneId: string) => {
     const params = new URLSearchParams(searchParams);
     params.set("type", range.type);
     if (range.type === "relative") {
@@ -509,11 +496,11 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
     params.set("live", String(range.live || false));
     params.set("refresh", String(range.refreshInterval || 10));
     params.set("limit", String(l));
+
     if (zoneId) params.set("zoneId", zoneId);
     else params.delete("zoneId");
 
-    if (actions.length > 0) params.set("actions", actions.join(","));
-    else params.delete("actions");
+    params.delete("actions");
 
     setSearchParams(params, { replace: true, preventScrollReset: true });
   };
@@ -539,20 +526,23 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
     if (typeof window !== "undefined") {
       localStorage.setItem("ff_ips_analyzer_zone", zId);
     }
-    syncToUrl(dateRange, limit, zId, actionsFilter);
+    syncToUrl(dateRange, limit, zId);
   };
 
-  const updateActionsFilter = (actions: string[]) => {
-    setActionsFilter(actions);
-    syncToUrl(dateRange, limit, analyzerZoneId, actions);
-  };
-
-  // Sync state to URL on mount if params are missing
+  // Guarantee that the URL always perfectly matches the internal UI state 
+  // so the Loader never fetches default empty data while the dropdown shows something else.
   useEffect(() => {
-    if (!searchParams.has("type")) {
-      setDateRange(dateRange);
+    const urlZone = searchParams.get("zoneId") || "";
+    const urlLimit = searchParams.get("limit");
+
+    if (
+      !searchParams.has("type") ||
+      urlZone !== analyzerZoneId ||
+      urlLimit !== String(limit)
+    ) {
+      syncToUrl(dateRange, limit, analyzerZoneId);
     }
-  }, []);
+  }, [searchParams, activeTab, dateRange, limit, analyzerZoneId]);
 
   useEffect(() => {
     const type = searchParams.get("type") as "relative" | "absolute" | null;
@@ -573,16 +563,10 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
     }
 
     const qZone = searchParams.get("zoneId");
-    if (qZone) {
+    if (qZone !== null) {
       _setAnalyzerZoneId(qZone);
     }
 
-    const qActions = searchParams.get("actions");
-    if (qActions !== null) {
-      setActionsFilter(qActions.split(",").filter(Boolean));
-    } else {
-      setActionsFilter([]);
-    }
   }, [searchParams]);
 
   useEffect(() => {
@@ -652,7 +636,7 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
           orgName={orgName}
           dateRange={dateRange}
           onDateRangeChange={setDateRange}
-          isLoading={navigation.state !== "idle"}
+          isLoading={navigation.state !== "idle" || revalidator.state !== "idle"}
           accounts={accounts}
           zones={zones}
           rules={rules}
@@ -679,7 +663,7 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
           onLimitChange={setLimit}
           activeZoneId={analyzerZoneId}
           onActiveZoneChange={setAnalyzerZoneId}
-          isLoading={navigation.state !== "idle"}
+          isLoading={navigation.state !== "idle" || revalidator.state !== "idle"}
         />
       )}
 
@@ -693,10 +677,8 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
           onLimitChange={setLimit}
           activeZoneId={analyzerZoneId}
           onActiveZoneChange={setAnalyzerZoneId}
-          activeFilters={actionsFilter}
-          onActiveFiltersChange={updateActionsFilter}
           onRefresh={() => revalidator.revalidate()}
-          isLoading={navigation.state !== "idle"}
+          isLoading={navigation.state !== "idle" || revalidator.state !== "idle"}
           recentActions={recentActions}
         />
       )}

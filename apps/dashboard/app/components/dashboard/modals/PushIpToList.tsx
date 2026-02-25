@@ -75,8 +75,8 @@ export function PushIpToList({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-150">
-            <div className="bg-white rounded-md shadow-2xl border border-slate-200 w-full max-w-md animate-in zoom-in-95 duration-200">
+        <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-150">
+            <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-md shadow-2xl border border-slate-200 w-full max-w-md animate-in zoom-in-95 duration-200">
 
                 {/* Modal header */}
                 <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-slate-100">

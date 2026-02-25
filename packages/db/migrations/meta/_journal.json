@@ -43,6 +43,13 @@
       "when": 1771970909133,
       "tag": "0005_gigantic_mach_iv",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1771977855638,
+      "tag": "0006_little_black_queen",
+      "breakpoints": true
     }
   ]
 }

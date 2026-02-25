@@ -51,7 +51,7 @@ export const actionLogs = sqliteTable('action_logs', {
     actionTaken: text('action_taken').notNull(), // 'IP_BLOCKED', 'JS_CHALLENGE', etc.
     targetType: text('target_type').default('IP').notNull(), // e.g. 'IP', 'ASN', 'COUNTRY'
     targetValue: text('target_value').notNull(), // e.g. '192.168.1.1', 'AS15169'
-    requestCount: integer('request_count').notNull(),
+    requestCount: integer('request_count'),
     metadata: text('metadata'), // JSON string containing rule-specific rollback needs (e.g. cfListId, cfListItemId)
     timestamp: integer('timestamp', { mode: 'timestamp' }).notNull(),
 });

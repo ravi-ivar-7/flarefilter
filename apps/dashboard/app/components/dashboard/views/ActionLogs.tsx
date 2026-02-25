@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { useFetcher } from "react-router";
+import { useFetcher, useNavigation, useRevalidator } from "react-router";
 import { LogsTable } from "../widgets/LogsTable";
 import { DateRangePicker, type DateRange } from "~/components/shared/DateRangePicker";
 
@@ -16,8 +16,6 @@ interface ActionLogsProps {
     recentActions: any[];
     activeZoneId: string;
     onActiveZoneChange: (v: string) => void;
-    activeFilters: string[];
-    onActiveFiltersChange: (v: string[]) => void;
     onRefresh: () => void;
 }
 
@@ -32,23 +30,9 @@ export function ActionLogs({
     recentActions,
     activeZoneId,
     onActiveZoneChange,
-    activeFilters,
-    onActiveFiltersChange,
     onRefresh
 }: ActionLogsProps) {
-    const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-    const filterRef = useRef<HTMLDivElement>(null);
     const [searchQuery, setSearchQuery] = useState("");
-
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
-                setIsFilterModalOpen(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
 
     const windowSeconds = useMemo(() => {
         if (dateRange.type === "relative") {
@@ -65,7 +49,9 @@ export function ActionLogs({
         return 3600;
     }, [dateRange]);
 
-    const isFetching = isLoading;
+    const navigation = useNavigation();
+    const revalidator = useRevalidator();
+    const isFetching = isLoading || navigation.state !== "idle" || revalidator.state !== "idle";
 
     const displayedResults = useMemo(() => {
         if (!searchQuery.trim()) return recentActions;
@@ -82,64 +68,14 @@ export function ActionLogs({
         <div className="flex flex-col gap-4 sm:gap-6">
             <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/60 px-3 sm:px-4 py-3 flex flex-row flex-wrap gap-2 items-center w-full">
 
-                {/* Filters */}
-                <div className="relative shrink-0" ref={filterRef}>
-                    <button
-                        onClick={() => setIsFilterModalOpen(!isFilterModalOpen)}
-                        className="flex items-center justify-center gap-2 px-3 h-[34px] text-[11px] font-bold bg-white border border-slate-200 rounded-md shadow-sm text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap"
-                    >
-                        <svg className="w-3.5 h-3.5 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-                        </svg>
-                        <span>Action</span>
-                        {activeFilters.length > 0 && (
-                            <span className="bg-slate-100 border border-slate-200 text-slate-600 px-1.5 py-0.5 rounded-md text-[9px] font-black tabular-nums">{activeFilters.length}</span>
-                        )}
-                    </button>
-                    {isFilterModalOpen && (
-                        <div className="absolute top-full mt-2 left-0 w-64 bg-white rounded-md shadow-xl border border-slate-200 overflow-hidden z-50 flex flex-col p-2 gap-1 animate-in fade-in zoom-in-95 duration-100">
-                            <div className="px-3 py-2 border-b border-slate-100 mb-1">
-                                <div className="text-[10px] font-black tracking-widest">Filter Actions</div>
-                                <div className="text-[9px] font-medium text-slate-800 leading-tight mt-0.5 italic">Filter by rule action taken</div>
-                            </div>
-                            {[
-                                { id: "IP_BLOCKED", label: "Block", desc: "Requests that were blocked" },
-                                { id: "MANAGED_CHALLENGE", label: "Managed Challenge", desc: "Interactive challenge" },
-                                { id: "JS_CHALLENGE", label: "JS Challenge", desc: "Invisible challenge" },
-                                { id: "LOG", label: "Log", desc: "Action logged only" }
-                            ].map(opt => {
-                                const isChecked = activeFilters.includes(opt.id);
-                                return (
-                                    <label key={opt.id} className={`flex items-start gap-3 px-3 py-2 border rounded-md transition-all cursor-pointer ${isChecked ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'border-transparent hover:bg-slate-50'}`}>
-                                        <div className="pt-0.5">
-                                            <input
-                                                type="checkbox"
-                                                checked={isChecked}
-                                                onChange={(e) => {
-                                                    if (e.target.checked) onActiveFiltersChange([...activeFilters, opt.id]);
-                                                    else onActiveFiltersChange(activeFilters.filter(f => f !== opt.id));
-                                                }}
-                                                className="w-4 h-4 rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-600 transition-all cursor-pointer"
-                                            />
-                                        </div>
-                                        <div className="flex flex-col text-left">
-                                            <span className={`flex items-center text-[12px] font-bold ${isChecked ? 'text-indigo-900' : 'text-slate-700'}`}>
-                                                {opt.label}
-                                            </span>
-                                            <span className={`text-[10px] font-medium leading-tight mt-0.5 ${isChecked ? 'text-indigo-600/70' : 'text-slate-400'}`}>{opt.desc}</span>
-                                        </div>
-                                    </label>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
+
 
                 {/* Zone select (Matches IPs analyzer exactly) */}
+                {/* Zone select (All Zones is valid here) */}
                 <select
                     value={activeZoneId}
                     onChange={(e) => onActiveZoneChange(e.target.value)}
-                    className={`block w-auto max-w-[180px] h-[34px] px-2 text-[10px] font-bold bg-white border-slate-200 min-w-[100px] shadow-sm rounded-md focus:ring-slate-950 shrink-0`}
+                    className={`block w-auto max-w-[180px] h-[34px] px-2 text-slate-900 border-slate-200 text-[10px] font-bold bg-white min-w-[100px] shadow-sm rounded-md focus:ring-slate-950 shrink-0 transition-all`}
                 >
                     <option value="">All Zones</option>
                     {zones?.map(z => (
