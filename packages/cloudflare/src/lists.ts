@@ -1,6 +1,6 @@
 import { CloudflareApiBase } from './base';
 
-export interface RulesListItem {
+export interface ListItem {
     id: string;
     ip?: string;
     asn?: number;
@@ -13,24 +13,24 @@ export interface RulesListItem {
 
 export class ListsApi extends CloudflareApiBase {
     /**
-     * Fetches all Rules Lists in the account.
+     * Fetches all Lists in the account.
      */
     async getLists(): Promise<any[]> {
         return this.fetchRest(`/accounts/${this.cfAccountId}/rules/lists`);
     }
 
     /**
-     * Fetches all items in a Cloudflare Rules List.
+     * Fetches all items in a Cloudflare List.
      * Handles cursor-based pagination.
      */
-    async getItems(cfListId: string, limit?: number): Promise<RulesListItem[]> {
-        const items: RulesListItem[] = [];
+    async getItems(cfListId: string, limit?: number): Promise<ListItem[]> {
+        const items: ListItem[] = [];
         let cursor: string | undefined = undefined;
 
         do {
             const endpoint: string = `/accounts/${this.cfAccountId}/rules/lists/${cfListId}/items${cursor ? `?cursor=${cursor}` : ''
                 }`;
-            const payload = await this.fetchRestFull<RulesListItem[]>(endpoint);
+            const payload = await this.fetchRestFull<ListItem[]>(endpoint);
             items.push(...payload.result);
 
             if (limit && items.length >= limit) {
@@ -44,13 +44,14 @@ export class ListsApi extends CloudflareApiBase {
     }
 
     /**
-     * Deletes a single item from a list.
+     * Deletes multiple items from a list in a single request.
      */
-    async deleteItem(cfListId: string, itemId: string): Promise<boolean> {
-        await this.fetchRest(`/accounts/${this.cfAccountId}/rules/lists/${cfListId}/items/${itemId}`, {
+    async deleteItems(cfListId: string, itemIds: string[]): Promise<string | null> {
+        const result = await this.fetchRest(`/accounts/${this.cfAccountId}/rules/lists/${cfListId}/items`, {
             method: 'DELETE',
+            body: JSON.stringify({ items: itemIds.map(id => ({ id })) }),
         });
-        return true;
+        return result?.operation_id ?? null;
     }
 
     /**

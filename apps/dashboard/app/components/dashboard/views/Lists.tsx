@@ -82,7 +82,7 @@ export function Lists({
         const formData = new FormData();
         formData.append("accountRef", selectedAccountRef);
         formData.append("listId", selectedListId);
-        formData.append("type", "rules-list-items");
+        formData.append("type", "list-items");
         formData.append("limit", limit.toString());
         itemsFetcher.submit(formData, { method: "post", action: "/api/cloudflare" });
     };
@@ -123,13 +123,10 @@ export function Lists({
         return () => clearInterval(timer);
     }, [selectedListId, selectedAccountRef, limit, dateRange.live]);
 
-    // Refresh when selection is cleared
+    // Notify parent to pause global sync when items are selected
     useEffect(() => {
         onPauseChange?.(selectedItemIds.size > 0);
-        if (selectedItemIds.size === 0 && selectedListId && selectedAccountRef) {
-            handleFetchItems();
-        }
-    }, [selectedItemIds.size, onPauseChange, selectedListId, selectedAccountRef]);
+    }, [selectedItemIds.size, onPauseChange]);
 
     // Handle items fetch result
     useEffect(() => {
@@ -181,29 +178,18 @@ export function Lists({
         );
     }, [listItems, searchQuery, startTime]);
 
-    const handleDelete = (itemId: string) => {
-        if (!confirm("Are you sure you want to remove this entry?")) return;
-        const formData = new FormData();
-        formData.append("accountRef", selectedAccountRef);
-        formData.append("listId", selectedListId!);
-        formData.append("itemId", itemId);
-        formData.append("type", "rules-list-item-delete");
-        deleteFetcher.submit(formData, { method: "post", action: "/api/cloudflare" });
-    };
-
     const handleBulkDelete = () => {
         const ids = Array.from(selectedItemIds);
         if (ids.length === 0) return;
         if (!confirm(`Are you sure you want to remove ${ids.length} selected entries?`)) return;
 
-        ids.forEach(id => {
-            const formData = new FormData();
-            formData.append("accountRef", selectedAccountRef);
-            formData.append("listId", selectedListId!);
-            formData.append("itemId", id);
-            formData.append("type", "rules-list-item-delete");
-            deleteFetcher.submit(formData, { method: "post", action: "/api/cloudflare" });
-        });
+        const formData = new FormData();
+        formData.append("accountRef", selectedAccountRef);
+        formData.append("listId", selectedListId!);
+        formData.append("itemIds", JSON.stringify(ids));
+        formData.append("type", "list-items-delete");
+        deleteFetcher.submit(formData, { method: "post", action: "/api/cloudflare" });
+
         setSelectedItemIds(new Set());
         setIsActionDropdownOpen(false);
     };
@@ -492,8 +478,8 @@ export function Lists({
                             </svg>
                         </div>
                         <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight italic">Choose a list to explore</h3>
-                        <p className="text-xs font-medium text-slate-400 mt-3 max-w-xs mx-auto leading-relaxed">
-                            Select one of your accounts and a specific rules list from the header to view and manage its items.
+                        <p className="text-slate-500 mb-6 max-w-sm mx-auto">
+                            Select one of your accounts and a specific list from the header to view and manage its items.
                         </p>
                     </div>
                 )}

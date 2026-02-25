@@ -66,7 +66,7 @@ export function PushIpToList({
 
         const fd = new FormData();
         fd.append("accountRef", zone.cfAccountRef);
-        fd.append("type", "rules-list-add");
+        fd.append("type", "list-items-add");
         fd.append("listId", selectedIpListId);
         fd.append("items", JSON.stringify(items));
         ipListAddFetcher.submit(fd, { method: "post", action: "/api/cloudflare" });

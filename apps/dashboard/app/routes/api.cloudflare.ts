@@ -31,7 +31,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
             return Response.json(lists);
         }
 
-        if (type === "rules-list-add") {
+        if (type === "list-items-add") {
             const listId = formData.get("listId") as string;
             const itemsJson = formData.get("items") as string;
 
@@ -46,7 +46,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
             }
         }
 
-        if (type === "rules-list-items") {
+        if (type === "list-items") {
             const listId = formData.get("listId") as string;
             const limit = parseInt(formData.get("limit") as string) || 10;
             if (!listId) return Response.json({ error: "Missing listId" }, { status: 400 });
@@ -55,13 +55,18 @@ export async function action({ request, context }: ActionFunctionArgs) {
             return Response.json(items);
         }
 
-        if (type === "rules-list-item-delete") {
+        if (type === "list-items-delete") {
             const listId = formData.get("listId") as string;
-            const itemId = formData.get("itemId") as string;
-            if (!listId || !itemId) return Response.json({ error: "Missing listId or itemId" }, { status: 400 });
+            const itemIdsJson = formData.get("itemIds") as string;
+            if (!listId || !itemIdsJson) return Response.json({ error: "Missing listId or itemIds" }, { status: 400 });
 
-            await cf.lists.deleteItem(listId, itemId);
-            return Response.json({ success: true });
+            try {
+                const itemIds: string[] = JSON.parse(itemIdsJson);
+                const operationId = await cf.lists.deleteItems(listId, itemIds);
+                return Response.json({ success: true, deleted: itemIds.length, operationId });
+            } catch (e: any) {
+                return Response.json({ error: "Failed to delete items", details: e.message }, { status: 400 });
+            }
         }
 
         if (type === "top-ips") {
