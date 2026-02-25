@@ -45,6 +45,9 @@ export function Header({ onToggleSidebar }: HeaderProps) {
         } else if (activeTab === "logs") {
             pageTitle = "Action Logs";
             pageSubtext = "Complete history of all mitigations and security actions.";
+        } else if (activeTab === "lists") {
+            pageTitle = "Rules Lists";
+            pageSubtext = "Manage your Cloudflare Rules Lists for IP, ASN, and Hostname filtering.";
         } else if (activeTab === "profile") {
             pageTitle = "Profile";
             pageSubtext = "Manage your organization and account preferences.";

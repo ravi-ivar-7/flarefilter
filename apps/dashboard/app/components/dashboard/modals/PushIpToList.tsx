@@ -61,14 +61,14 @@ export function PushIpToList({
         const zone = zones.find(z => z.id === activeZoneId);
         if (!zone || !selectedIpListId) return;
 
-        const ipString = selectedIps.filter(Boolean).join(",");
-        if (!ipString) return;
+        const items = selectedIps.filter(Boolean).map(ip => ({ ip }));
+        if (items.length === 0) return;
 
         const fd = new FormData();
         fd.append("accountRef", zone.cfAccountRef);
-        fd.append("type", "ip-list-add");
+        fd.append("type", "rules-list-add");
         fd.append("listId", selectedIpListId);
-        fd.append("ips", ipString);
+        fd.append("items", JSON.stringify(items));
         ipListAddFetcher.submit(fd, { method: "post", action: "/api/cloudflare" });
     };
 

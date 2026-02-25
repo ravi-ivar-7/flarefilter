@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 
 export type DateRange = {
-    type: "relative" | "absolute";
+    type: "relative" | "absolute" | "all";
     relativeValue?: string;
     start?: Date;
     end?: Date;
@@ -84,6 +84,11 @@ export function DateRangePicker({
         setIsOpen(false);
     };
 
+    const handleClearFilter = () => {
+        onChange({ ...value, type: "all", relativeValue: undefined, start: undefined, end: undefined });
+        setIsOpen(false);
+    };
+
     const handleApplyAbsolute = () => {
         if (tempStart && tempEnd) {
             onChange({
@@ -98,6 +103,7 @@ export function DateRangePicker({
     };
 
     const getDisplayLabel = () => {
+        if (value.type === "all") return "All Time";
         if (value.type === "relative") {
             return PRESETS.find(p => p.value === value.relativeValue)?.label || "Select range";
         }
@@ -171,6 +177,7 @@ export function DateRangePicker({
                                 </button>
                             ))}
 
+
                             {showLive && (
                                 <div className="mt-auto pt-2 border-t border-slate-100 md:block hidden">
                                     <div className="flex items-center justify-between px-3 py-2">
@@ -209,6 +216,23 @@ export function DateRangePicker({
                     {/* Custom Range Area */}
                     {showAbsolute && (
                         <div className="flex-1 p-6 flex flex-col gap-6">
+                            <button
+                                onClick={handleClearFilter}
+                                className={`w-full h-11 rounded-xl flex items-center justify-center gap-2.5 transition-all outline-none border ${value.type === "all"
+                                    ? "bg-slate-950 text-white border-slate-950 shadow-lg shadow-slate-900/10"
+                                    : "bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100 hover:border-indigo-300 shadow-sm"
+                                    }`}
+                            >
+                                <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <line x1="15" y1="9" x2="9" y2="15" />
+                                    <line x1="9" y1="9" x2="15" y2="15" />
+                                </svg>
+                                <span className="text-[13px] font-bold uppercase tracking-wider">All Time (No Filter)</span>
+                            </button>
+
+                            <div className="h-px bg-slate-100 w-full" />
+
                             <div className="space-y-4">
                                 <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Absolute time range</h3>
 
@@ -242,9 +266,12 @@ export function DateRangePicker({
                             <button
                                 onClick={handleApplyAbsolute}
                                 disabled={!tempStart || !tempEnd}
-                                className="w-full h-11 bg-slate-950 text-white text-sm font-bold rounded-xl hover:bg-black transition-all active:scale-[0.98] shadow-lg shadow-slate-900/10 disabled:opacity-50 disabled:active:scale-100"
+                                className={`w-full h-11 rounded-xl text-sm font-bold transition-all active:scale-[0.98] outline-none border ${value.type === "absolute"
+                                    ? "bg-slate-950 text-white border-slate-950 shadow-lg shadow-slate-900/10"
+                                    : "bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-900 hover:text-slate-900 hover:bg-slate-100 shadow-sm"
+                                    } disabled:opacity-50 disabled:active:scale-100`}
                             >
-                                Apply Range
+                                {value.type === "absolute" ? "Absolute Range Active" : "Apply Custom Range"}
                             </button>
 
                             {tempStart && tempEnd && (

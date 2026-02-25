@@ -14,6 +14,7 @@ import { RULE_REGISTRY, type RuleType } from "~/lib/rules/registry";
 import { IPsAnalyzer } from "~/components/dashboard/views/IPsAnalyzer";
 import { Overview } from "~/components/dashboard/views/Overview";
 import { ActionLogs } from "~/components/dashboard/views/ActionLogs";
+import { Lists } from "~/components/dashboard/views/Lists";
 import { Profile } from "~/components/dashboard/views/Profile";
 import { type DateRange } from "~/components/shared/DateRangePicker";
 import { useSearchParams } from "react-router";
@@ -383,7 +384,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     else if (unit === "h") ms = num * 3600000;
     else if (unit === "d") ms = num * 86400000;
     conditions.push(gte(actionLogs.timestamp, new Date(Date.now() - ms)));
-  } else if (startStr) {
+  } else if (rangeType === "absolute" && startStr) {
     conditions.push(gte(actionLogs.timestamp, new Date(startStr)));
     if (endStr) conditions.push(lte(actionLogs.timestamp, new Date(endStr)));
   }
@@ -421,10 +422,11 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
   const [ruleModalZoneId, setRuleModalZoneId] = useState<string | null>(null);
   const [selectedRuleType, setSelectedRuleType] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [isPaused, setIsPaused] = useState(false);
 
   const [dateRange, _setDateRange] = useState<DateRange>(() => {
     // 1. Try URL first
-    const type = searchParams.get("type") as "relative" | "absolute" | null;
+    const type = searchParams.get("type") as "relative" | "absolute" | "all" | null;
     if (type) {
       return {
         type,
@@ -488,10 +490,14 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
       params.set("relative", range.relativeValue || "30m");
       params.delete("start");
       params.delete("end");
-    } else {
+    } else if (range.type === "absolute") {
       params.set("start", range.start?.toISOString() || "");
       params.set("end", range.end?.toISOString() || "");
       params.delete("relative");
+    } else {
+      params.delete("relative");
+      params.delete("start");
+      params.delete("end");
     }
     params.set("live", String(range.live || false));
     params.set("refresh", String(range.refreshInterval || 10));
@@ -545,7 +551,7 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
   }, [searchParams, activeTab, dateRange, limit, analyzerZoneId]);
 
   useEffect(() => {
-    const type = searchParams.get("type") as "relative" | "absolute" | null;
+    const type = searchParams.get("type") as "relative" | "absolute" | "all" | null;
     if (type) {
       _setDateRange({
         type,
@@ -578,13 +584,13 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
 
     const intervalMs = (dateRange.refreshInterval || 10) * 1000;
     const timer = setInterval(() => {
-      if (navigation.state === "idle") {
+      if (navigation.state === "idle" && !isPaused) {
         revalidator.revalidate();
       }
     }, intervalMs);
 
     return () => clearInterval(timer);
-  }, [dateRange, revalidator, navigation.state]);
+  }, [dateRange, revalidator, navigation.state, isPaused]);
 
   // Close modal only on success (no error). If there's an error keep modal open so user sees it.
   const prevIsAddingAccount = useRef(isAddingAccount);
@@ -664,6 +670,7 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
           activeZoneId={analyzerZoneId}
           onActiveZoneChange={setAnalyzerZoneId}
           isLoading={navigation.state !== "idle" || revalidator.state !== "idle"}
+          onPauseChange={setIsPaused}
         />
       )}
 
@@ -680,6 +687,18 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
           onRefresh={() => revalidator.revalidate()}
           isLoading={navigation.state !== "idle" || revalidator.state !== "idle"}
           recentActions={recentActions}
+        />
+      )}
+
+      {activeTab === "lists" && (
+        <Lists
+          accounts={accounts}
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          limit={limit}
+          onLimitChange={setLimit}
+          isLoading={navigation.state !== "idle" || revalidator.state !== "idle"}
+          onPauseChange={setIsPaused}
         />
       )}
 

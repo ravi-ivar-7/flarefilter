@@ -2,6 +2,7 @@ import { type ActionFunctionArgs } from "react-router";
 import { drizzle } from "drizzle-orm/d1";
 import { cloudflareAccounts } from "@flarefilter/db/src/schema/zones";
 import { eq } from "drizzle-orm";
+import { CloudflareClient } from "@flarefilter/cloudflare";
 
 export async function action({ request, context }: ActionFunctionArgs) {
     const env = context.cloudflare.env;
@@ -10,114 +11,84 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     const formData = await request.formData();
     const accountRef = formData.get("accountRef") as string;
-    const type = formData.get("type") as "zones" | "lists";
+    const type = formData.get("type") as string;
 
     if (!accountRef) return Response.json({ error: "Missing accountRef" }, { status: 400 });
 
     const [account] = await db.select().from(cloudflareAccounts).where(eq(cloudflareAccounts.id, accountRef));
     if (!account) return Response.json({ error: "Account not found" }, { status: 404 });
 
-    const headers = { Authorization: `Bearer ${account.cfApiToken}` };
+    const cf = new CloudflareClient(account.cfAccountId, account.cfApiToken);
 
     try {
         if (type === "zones") {
-            const res = await fetch(`https://api.cloudflare.com/client/v4/zones?account.id=${account.cfAccountId}`, { headers });
-            const data: any = await res.json();
-            return Response.json(data.result || []);
+            const zones = await cf.zones.getZones();
+            return Response.json(zones);
         }
 
         if (type === "lists") {
-            const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${account.cfAccountId}/rules/lists`, { headers });
-            const data: any = await res.json();
-            return Response.json(data.result || []);
+            const lists = await cf.lists.getLists();
+            return Response.json(lists);
         }
 
-        if (type === "ip-list-add") {
+        if (type === "rules-list-add") {
             const listId = formData.get("listId") as string;
-            const ips = (formData.get("ips") as string || "").split(",").map(ip => ip.trim()).filter(Boolean);
-            if (!listId || ips.length === 0) return Response.json({ error: "Missing listId or ips" }, { status: 400 });
+            const itemsJson = formData.get("items") as string;
 
-            const body = ips.map(ip => ({ ip }));
-            const res = await fetch(
-                `https://api.cloudflare.com/client/v4/accounts/${account.cfAccountId}/rules/lists/${listId}/items`,
-                { method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify(body) }
-            );
-            const data: any = await res.json();
-            if (!data.success) return Response.json({ error: data.errors?.[0]?.message || "Failed to add IPs" }, { status: 400 });
-            return Response.json({ success: true, added: ips.length });
+            if (!listId || !itemsJson) return Response.json({ error: "Missing listId or items" }, { status: 400 });
+
+            try {
+                const items = JSON.parse(itemsJson);
+                const result = await cf.lists.addItems(listId, items);
+                return Response.json({ success: true, added: items.length, operationId: result });
+            } catch (e) {
+                return Response.json({ error: "Invalid items JSON" }, { status: 400 });
+            }
+        }
+
+        if (type === "rules-list-items") {
+            const listId = formData.get("listId") as string;
+            const limit = parseInt(formData.get("limit") as string) || 10;
+            if (!listId) return Response.json({ error: "Missing listId" }, { status: 400 });
+
+            const items = await cf.lists.getItems(listId, limit);
+            return Response.json(items);
+        }
+
+        if (type === "rules-list-item-delete") {
+            const listId = formData.get("listId") as string;
+            const itemId = formData.get("itemId") as string;
+            if (!listId || !itemId) return Response.json({ error: "Missing listId or itemId" }, { status: 400 });
+
+            await cf.lists.deleteItem(listId, itemId);
+            return Response.json({ success: true });
         }
 
         if (type === "top-ips") {
             const zoneTag = formData.get("zoneTag") as string;
             const limit = parseInt(formData.get("limit") as string) || 10;
-            const windowSeconds = parseInt(formData.get("windowSeconds") as string) || 3600;
-            const dimensionsParam = formData.get("dimensions") as string || "";
+            const windowSecondsVal = formData.get("windowSeconds");
+            const windowSeconds = windowSecondsVal ? parseInt(windowSecondsVal as string) : undefined;
+            const dimensionsParam = formData.get("dimensions") as string || "clientIP";
+
             if (!zoneTag) return Response.json({ error: "Missing zoneTag" }, { status: 400 });
 
-            // Use 3 minutes latency for adaptive groups to be safe
-            const end = Date.now() - (180 * 1000);
-            const start = end - (windowSeconds * 1000);
-            const datetimeEnd = new Date(end).toISOString().split('.')[0] + 'Z';
-            const datetimeStart = new Date(start).toISOString().split('.')[0] + 'Z';
+            const dimensions = dimensionsParam.split(",").map(d => d.trim()).filter(Boolean);
 
-            const finalDimensions = dimensionsParam.split(",").map(d => d.trim()).filter(Boolean);
-            if (finalDimensions.length === 0) {
-                finalDimensions.push("clientIP");
-            }
-            const dimensionsStr = finalDimensions.join(", ");
-
-            const graphqlQuery = `
-                query GetTopStats($zoneTag: String!, $start: String!, $end: String!, $limit: Int!) {
-                    viewer {
-                        zones(filter: { zoneTag: $zoneTag }) {
-                            httpRequestsAdaptiveGroups(
-                                filter: { datetime_geq: $start, datetime_leq: $end }
-                                limit: $limit
-                                orderBy: [count_DESC]
-                            ) {
-                                count
-                                dimensions { ${dimensionsStr} }
-                            }
-                        }
-                    }
-                }
-            `;
-
-            console.log("CF Explorer Query:", { zoneTag, start: datetimeStart, end: datetimeEnd, dimensions: dimensionsStr, limit });
-
-            const res = await fetch('https://api.cloudflare.com/client/v4/graphql', {
-                method: 'POST',
-                headers: { ...headers, 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    query: graphqlQuery,
-                    variables: { zoneTag, start: datetimeStart, end: datetimeEnd, limit }
-                }),
+            const results = await cf.analytics.getTopStats({
+                zoneTag,
+                dimensions,
+                windowSeconds,
+                limit
             });
 
-            const data: any = await res.json();
-
-            if (data.errors) {
-                console.error("CF GraphQL Errors:", JSON.stringify(data.errors, null, 2));
-                return Response.json({
-                    error: data.errors[0].message,
-                    details: data.errors
-                }, { status: 500 });
-            }
-
-            const results = data.data?.viewer?.zones?.[0]?.httpRequestsAdaptiveGroups || [];
-            console.log(`CF Explorer Success: found ${results.length} rows`);
-
-            return Response.json(results.map((r: any) => ({
-                ...r.dimensions,
-                count: r.count
-            })));
+            return Response.json(results);
         }
     } catch (err: any) {
         console.error("Cloudflare API Action Error:", err);
         return Response.json({
-            error: "Internal Server Error",
-            message: err.message || "Unknown error",
-            stack: err.stack
+            error: err.message || "Failed to process Cloudflare action",
+            details: err.details
         }, { status: 500 });
     }
 

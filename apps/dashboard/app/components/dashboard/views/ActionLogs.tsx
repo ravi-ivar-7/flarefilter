@@ -34,21 +34,6 @@ export function ActionLogs({
 }: ActionLogsProps) {
     const [searchQuery, setSearchQuery] = useState("");
 
-    const windowSeconds = useMemo(() => {
-        if (dateRange.type === "relative") {
-            const val = dateRange.relativeValue || "30m";
-            const num = parseInt(val);
-            const unit = val.slice(-1);
-            if (unit === "m") return num * 60;
-            if (unit === "h") return num * 3600;
-            if (unit === "d") return num * 86400;
-            return 1800;
-        } else if (dateRange.start && dateRange.end) {
-            return Math.floor((dateRange.end.getTime() - dateRange.start.getTime()) / 1000);
-        }
-        return 3600;
-    }, [dateRange]);
-
     const navigation = useNavigation();
     const revalidator = useRevalidator();
     const isFetching = isLoading || navigation.state !== "idle" || revalidator.state !== "idle";
@@ -68,9 +53,6 @@ export function ActionLogs({
         <div className="flex flex-col gap-4 sm:gap-6">
             <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/60 px-3 sm:px-4 py-3 flex flex-row flex-wrap gap-2 items-center w-full">
 
-
-
-                {/* Zone select (Matches IPs analyzer exactly) */}
                 {/* Zone select (All Zones is valid here) */}
                 <select
                     value={activeZoneId}

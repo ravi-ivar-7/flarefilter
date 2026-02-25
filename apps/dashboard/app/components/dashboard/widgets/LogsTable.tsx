@@ -21,10 +21,11 @@ export function LogsTable({ logs, zones = [] }: { logs: any[], zones?: any[] }) 
     if (logs.length === 0) {
         return (
             <div className="h-full flex flex-col items-center justify-center py-32 px-12 text-center group">
-                <div className="w-24 h-24 rounded-[2rem] bg-slate-50 border border-slate-100 flex items-center justify-center mb-8 transition-all group-hover:scale-110 duration-500 shadow-sm relative">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-300">
+                <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-6 transition-all group-hover:scale-110 duration-500 shadow-sm relative mx-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-300">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" />
                     </svg>
+                    <div className="absolute inset-0 bg-indigo-500/5 rounded-2xl animate-pulse" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 uppercase tracking-tight italic">No logs found</h3>
                 <div className="mt-5 text-left bg-slate-50 border border-slate-200 rounded-xl p-5 max-w-sm w-full mx-auto">

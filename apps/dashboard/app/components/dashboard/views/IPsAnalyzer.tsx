@@ -15,7 +15,8 @@ export function IPsAnalyzer({
     onLimitChange,
     activeZoneId,
     onActiveZoneChange,
-    isLoading: isGlobalLoading
+    isLoading: isGlobalLoading,
+    onPauseChange
 }: {
     zones: any[];
     accounts: any[];
@@ -27,6 +28,7 @@ export function IPsAnalyzer({
     activeZoneId: string;
     onActiveZoneChange: (v: string) => void;
     isLoading: boolean;
+    onPauseChange?: (v: boolean) => void;
 }) {
     const fetcher = useFetcher();
 
@@ -71,6 +73,7 @@ export function IPsAnalyzer({
     }, [dimensions]);
 
     const windowSeconds = useMemo(() => {
+        if (dateRange.type === "all") return null;
         if (dateRange.type === "relative") {
             const val = dateRange.relativeValue || "30m";
             const num = parseInt(val);
@@ -95,7 +98,9 @@ export function IPsAnalyzer({
         formData.append("zoneTag", zone.cfZoneId);
         formData.append("type", "top-ips");
         formData.append("dimensions", dimensions.length > 0 ? dimensions.join(",") : "clientIP");
-        formData.append("windowSeconds", windowSeconds.toString());
+        if (windowSeconds) {
+            formData.append("windowSeconds", windowSeconds.toString());
+        }
         formData.append("limit", limit.toString());
 
         fetcher.submit(formData, { method: "post", action: "/api/cloudflare" });
@@ -103,8 +108,9 @@ export function IPsAnalyzer({
 
     const selectedItemsSizeRef = useRef(selectedItems.size);
     useEffect(() => {
+        onPauseChange?.(selectedItems.size > 0);
         selectedItemsSizeRef.current = selectedItems.size;
-    }, [selectedItems.size]);
+    }, [selectedItems.size, onPauseChange]);
 
     // Auto-fetch on live or range change
     useEffect(() => {
@@ -393,11 +399,11 @@ export function IPsAnalyzer({
                             </div>
                         ) : results.length === 0 ? (
                             <div className="h-full flex flex-col items-center justify-center py-32 px-12 text-center group">
-                                <div className="w-24 h-24 rounded-[2rem] bg-slate-50 border border-slate-100 flex items-center justify-center mb-8 transition-all group-hover:scale-110 duration-500 shadow-sm relative">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-300">
+                                <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-6 transition-all group-hover:scale-110 duration-500 shadow-sm relative mx-auto">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-300">
                                         <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
                                     </svg>
-                                    <div className="absolute inset-0 bg-indigo-500/5 rounded-[2rem] animate-pulse" />
+                                    <div className="absolute inset-0 bg-indigo-500/5 rounded-2xl animate-pulse" />
                                 </div>
                                 <h3 className="text-xl font-bold text-slate-900 uppercase tracking-tight italic">No insights yet</h3>
                                 <div className="mt-5 text-left bg-slate-50 border border-slate-200 rounded-xl p-5 max-w-sm w-full mx-auto">

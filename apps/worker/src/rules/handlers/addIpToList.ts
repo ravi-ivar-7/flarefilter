@@ -30,7 +30,7 @@ export class AddIpToListRule implements RuleHandler {
 
         // 1. Fetch abusive IPs — throws if the CF GraphQL query itself fails.
         try {
-            flaggedIPs = await cf.ips.getAbusive(
+            flaggedIPs = await cf.getAbusiveIps(
                 zone.cfZoneId,
                 rateLimitThreshold,
                 ruleWindowSeconds
@@ -48,19 +48,20 @@ export class AddIpToListRule implements RuleHandler {
         console.log(`  Found ${flaggedIPs.length} flagged IP(s). Submitting batch to CF list…`);
 
         // 2. Add IPs to the CF list.
-        //    addItemsToListSafe handles the mixed case:
+        //    addItemsSafe handles the mixed case:
         //      - Fast path: single batch POST (all new).
-        //      - Slow path: per-IP POSTs if batch is rejected for duplicates,
-        //                   so new IPs are never silently lost with the dupes.
-        let added: string[] = [];
-        let alreadyInList: string[] = [];
-        let failed: string[] = [];
+        //      - Slow path: per-item POSTs if batch is rejected for duplicates,
+        //                   so new items are never silently lost with the dupes.
+        let added: any[] = [];
+        let alreadyInList: any[] = [];
+        let failed: any[] = [];
         let operationIds: string[] = [];
 
         try {
-            ({ added, alreadyInList, failed, operationIds } = await cf.ips.addItemsToListSafe(
+            const comment = `FlareFilter auto-added ${new Date().toISOString()}`;
+            ({ added, alreadyInList, failed, operationIds } = await cf.lists.addItemsSafe(
                 cfListId,
-                flaggedIPs.map(({ ip }) => ip)
+                flaggedIPs.map(({ ip }) => ({ ip, comment }))
             ));
         } catch (err: any) {
             // Hard error (non-duplicate): auth failure, list not found, etc.
@@ -70,16 +71,18 @@ export class AddIpToListRule implements RuleHandler {
 
         // 3. Log summary before writing to DB.
         if (alreadyInList.length > 0) {
-            const preview = alreadyInList.length > 10
-                ? `${alreadyInList.slice(0, 10).join(', ')} … (+${alreadyInList.length - 10} more)`
-                : alreadyInList.join(', ');
-            console.log(`  ${alreadyInList.length} IP(s) already in list: ${preview}`);
+            const alreadyInListIps = alreadyInList.map(i => i.ip);
+            const preview = alreadyInListIps.length > 10
+                ? `${alreadyInListIps.slice(0, 10).join(', ')} … (+${alreadyInListIps.length - 10} more)`
+                : alreadyInListIps.join(', ');
+            console.log(`  ${alreadyInListIps.length} IP(s) already in list: ${preview}`);
         }
         if (failed.length > 0) {
-            const preview = failed.length > 10
-                ? `${failed.slice(0, 10).join(', ')} … (+${failed.length - 10} more)`
-                : failed.join(', ');
-            console.error(`  ${failed.length} IP(s) failed to add: ${preview}`);
+            const failedIps = failed.map(i => i.ip);
+            const preview = failedIps.length > 10
+                ? `${failedIps.slice(0, 10).join(', ')} … (+${failedIps.length - 10} more)`
+                : failedIps.join(', ');
+            console.error(`  ${failedIps.length} IP(s) failed to add: ${preview}`);
         }
 
         if (added.length === 0) {
@@ -89,7 +92,7 @@ export class AddIpToListRule implements RuleHandler {
 
         // 4. Batch-insert audit log entries ONLY for newly added IPs.
         const now = new Date();
-        const addedSet = new Set(added);
+        const addedSet = new Set(added.map(i => i.ip));
         const newlyAdded = flaggedIPs.filter(({ ip }) => addedSet.has(ip));
         await actionLogger.logActions(
             newlyAdded.map(({ ip, count }) => ({

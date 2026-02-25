@@ -111,7 +111,7 @@ export function Overview({
                     zonesCount={zones.length}
                     totalBlocks={totalBlocks}
                     activeRulesCount={rules.filter((r: any) => r.isActive).length}
-                    rangeLabel={dateRange.type === "relative" ? `Last ${dateRange.relativeValue}` : "Custom Range"}
+                    rangeLabel={dateRange.type === "all" ? "All Time" : (dateRange.type === "relative" ? `Last ${dateRange.relativeValue}` : "Custom Range")}
                 />
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

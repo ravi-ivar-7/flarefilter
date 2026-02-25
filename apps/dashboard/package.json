@@ -12,6 +12,7 @@
     "typecheck": "npm run cf-typegen && react-router typegen && tsc -b"
   },
   "dependencies": {
+    "@flarefilter/cloudflare": "workspace:^",
     "@flarefilter/db": "workspace:^",
     "@flarefilter/rules": "workspace:^",
     "better-auth": "^1.1.20",

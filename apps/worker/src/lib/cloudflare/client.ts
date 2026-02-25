@@ -1,18 +1,29 @@
-import { CloudflareIpApi } from './api/ip';
+import { CloudflareClient as SharedClient } from '@flarefilter/cloudflare';
 
 /**
  * Composes all CF domain-specific API clients.
- * Does NOT extend CloudflareApiBase — that is an internal base for the
- * sub-clients only. CloudflareClient is purely a composition root.
+ * Wraps the shared CloudflareClient to provide worker-specific convenience methods
+ * or maintain API compatibility if needed.
  */
-export class CloudflareClient {
-    public readonly ips: CloudflareIpApi;
+export class CloudflareClient extends SharedClient {
+    /**
+     * Legacy/Convenience alias for analytics top stats specialized for abusive IPs.
+     */
+    async getAbusiveIps(
+        cfZoneId: string,
+        threshold: number,
+        windowSeconds: number
+    ): Promise<{ ip: string; count: number }[]> {
+        const results = await this.analytics.getTopStats({
+            zoneTag: cfZoneId,
+            dimensions: ['clientIP'],
+            windowSeconds,
+            limit: 10000,
+            latencyOffsetSeconds: 60, // Match the original latency buffer
+        });
 
-    constructor(cfAccountId: string, cfApiToken: string) {
-        this.ips = new CloudflareIpApi(cfAccountId, cfApiToken);
-
-        // Future extensions:
-        // this.asn = new CloudflareAsnApi(cfAccountId, cfApiToken);
-        // this.countries = new CloudflareCountryApi(cfAccountId, cfApiToken);
+        return results
+            .filter((r: any) => r.count > threshold)
+            .map((r: any) => ({ ip: r.clientIP, count: r.count }));
     }
 }

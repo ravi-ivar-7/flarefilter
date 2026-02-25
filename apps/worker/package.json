@@ -9,6 +9,7 @@
         "typecheck": "tsc --noEmit"
     },
     "dependencies": {
+        "@flarefilter/cloudflare": "workspace:*",
         "@flarefilter/db": "workspace:*",
         "@flarefilter/rules": "workspace:*",
         "cron-parser": "^5.5.0",
