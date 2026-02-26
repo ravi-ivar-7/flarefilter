@@ -43,6 +43,9 @@ export class CloudflareApiBase {
 
     /**
      * Full REST wrapper (returns success, result, result_info, errors).
+     *
+     * Fix: reads the body as text first, then parses as JSON, so we never
+     * double-consume the Response body on error paths.
      */
     protected async fetchRestFull<T = any>(
         endpoint: string,
@@ -70,18 +73,22 @@ export class CloudflareApiBase {
             },
         });
 
+        // Read body as text ONCE — avoids double-consumption when .json()
+        // throws and we fall back to .text() (the original bug).
+        const text = await response.text();
+
         if (!response.ok) {
             let detail: string;
             try {
-                const err: any = await response.json();
+                const err = JSON.parse(text);
                 detail = JSON.stringify(err.errors ?? err);
             } catch {
-                detail = await response.text();
+                detail = text;
             }
             throw new Error(`Cloudflare REST API Error (${response.status}): ${detail}`);
         }
 
-        const payload: any = await response.json();
+        const payload: any = JSON.parse(text);
 
         if (!payload.success) {
             throw new Error(`Cloudflare REST API Error: ${JSON.stringify(payload.errors)}`);

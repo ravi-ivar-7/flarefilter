@@ -1,13 +1,23 @@
 import { type ActionFunctionArgs } from "react-router";
 import { drizzle } from "drizzle-orm/d1";
 import { cloudflareAccounts } from "@flarefilter/db/src/schema/zones";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { CloudflareClient } from "@flarefilter/cloudflare";
+import { getAuth } from "~/lib/auth";
 
 export async function action({ request, context }: ActionFunctionArgs) {
     const env = context.cloudflare.env;
     if (!env.DB) return Response.json({ error: "DB not found" }, { status: 500 });
     const db = drizzle(env.DB);
+
+    // ── Auth guard ────────────────────────────────────────────────────────────
+    const auth = getAuth(env);
+    const sessionData = await auth.api.getSession({ headers: request.headers });
+    if (!sessionData?.user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+    // Resolve tenant — user must belong to an active org.
+    const tenantId = sessionData.session.activeOrganizationId;
+    if (!tenantId) return Response.json({ error: "No active organization" }, { status: 403 });
 
     const formData = await request.formData();
     const accountRef = formData.get("accountRef") as string;
@@ -15,7 +25,11 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     if (!accountRef) return Response.json({ error: "Missing accountRef" }, { status: 400 });
 
-    const [account] = await db.select().from(cloudflareAccounts).where(eq(cloudflareAccounts.id, accountRef));
+    // Tenant-scoped lookup: ensures the caller can only use accounts that
+    // belong to their own organization. Prevents IDOR.
+    const [account] = await db.select().from(cloudflareAccounts).where(
+        and(eq(cloudflareAccounts.id, accountRef), eq(cloudflareAccounts.tenantId, tenantId))
+    );
     if (!account) return Response.json({ error: "Account not found" }, { status: 404 });
 
     const cf = new CloudflareClient(account.cfAccountId, account.cfApiToken);
@@ -37,13 +51,15 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
             if (!listId || !itemsJson) return Response.json({ error: "Missing listId or items" }, { status: 400 });
 
+            let items: any[];
             try {
-                const items = JSON.parse(itemsJson);
-                const result = await cf.lists.addItems(listId, items);
-                return Response.json({ success: true, added: items.length, operationId: result });
-            } catch (e) {
+                items = JSON.parse(itemsJson);
+            } catch {
                 return Response.json({ error: "Invalid items JSON" }, { status: 400 });
             }
+
+            const result = await cf.lists.addItems(listId, items);
+            return Response.json({ success: true, added: items.length, operationId: result });
         }
 
         if (type === "list-items") {

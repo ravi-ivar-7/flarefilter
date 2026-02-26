@@ -13,11 +13,14 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const sessionData = await auth.api.getSession({ headers: request.headers });
     if (!sessionData?.user) return Response.json({ error: "Unauthorized" }, { status: 401 });
     let tenantId = sessionData.session.activeOrganizationId;
+    if (!tenantId) {
+        return Response.json([]); // No active org — return empty, don't leak other tenants' data.
+    }
 
     const formData = await request.formData();
     const zoneId = formData.get("zoneId") as string;
     const actions = formData.get("actions") as string;
-    const limit = parseInt(formData.get("limit") as string || "100", 10);
+    const limit = Math.min(parseInt(formData.get("limit") as string || "100", 10), 1000);
     const windowSeconds = parseInt(formData.get("windowSeconds") as string || "3600", 10);
 
     const conditions = [];

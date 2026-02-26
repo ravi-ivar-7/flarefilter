@@ -1,4 +1,5 @@
 import { RuleHandler, RuleContext } from '../interface';
+import { log } from '../../lib/log';
 
 export class AddIpToListRule implements RuleHandler {
     /**
@@ -7,16 +8,13 @@ export class AddIpToListRule implements RuleHandler {
      * and writes audit log entries only for IPs that were genuinely new
      * (not already present in the list).
      */
-    async execute({ zone, rule, cf, actionLogger }: RuleContext): Promise<void> {
-        console.log(
+    async execute({ zone, rule, cf, actionLogger, prefetchedIps }: RuleContext): Promise<void> {
+        log(
             `  Rule [add_ip_to_list] id=${rule.id} list=${rule.cfListId} ` +
             `threshold=${rule.rateLimitThreshold} window=${rule.windowSeconds}s`
         );
 
         // Guard: validate required rule fields at runtime.
-        // `rule` is typed as `any` so TypeScript's `!` assertions give no real safety.
-        // A NULL cfListId produces a URL like `.../lists/null/items` (404 from CF).
-        // NULL threshold/window will silently match nothing or use a 0-second window.
         const { cfListId, rateLimitThreshold, windowSeconds: ruleWindowSeconds } = rule;
         if (!cfListId || typeof rateLimitThreshold !== 'number' || typeof ruleWindowSeconds !== 'number') {
             console.error(
@@ -28,29 +26,38 @@ export class AddIpToListRule implements RuleHandler {
 
         let flaggedIPs: { ip: string; count: number }[] = [];
 
-        // 1. Fetch abusive IPs — throws if the CF GraphQL query itself fails.
-        try {
-            flaggedIPs = await cf.getAbusiveIps(
-                zone.cfZoneId,
-                rateLimitThreshold,
-                ruleWindowSeconds
-            );
-        } catch (err: any) {
-            console.error(`  Failed to query abusive IPs for rule ${rule.id} on zone ${zone.name}:`, err.message);
-            return; // Can't proceed without data — bail for this rule cycle.
+        // 1. Use pre-fetched IPs when supplied by the batched cron orchestrator.
+        //    Fall back to a per-rule analytics query only when not available.
+        if (prefetchedIps) {
+            // Re-filter against THIS rule's threshold — the batched query used
+            // the lowest threshold across all rules on this zone, so the
+            // pre-fetched set may contain IPs below this specific rule's bar.
+            flaggedIPs = prefetchedIps.filter(({ count }) => count > rateLimitThreshold);
+            log(`  Using ${flaggedIPs.length} pre-fetched flagged IP(s) for rule ${rule.id} (filtered from ${prefetchedIps.length}).`);
+        } else {
+            try {
+                flaggedIPs = await cf.getAbusiveIps(
+                    zone.cfZoneId,
+                    rateLimitThreshold,
+                    ruleWindowSeconds
+                );
+            } catch (err: any) {
+                console.error(`  Failed to query abusive IPs for rule ${rule.id} on zone ${zone.name}:`, err.message);
+                return;
+            }
         }
 
         if (flaggedIPs.length === 0) {
-            console.log(`  No IPs exceeded threshold for rule ${rule.id}.`);
+            log(`  No IPs exceeded threshold for rule ${rule.id}.`);
             return;
         }
 
-        console.log(`  Found ${flaggedIPs.length} flagged IP(s). Submitting batch to CF list…`);
+        log(`  Found ${flaggedIPs.length} flagged IP(s). Submitting batch to CF list…`);
 
         // 2. Add IPs to the CF list.
         //    addItemsSafe handles the mixed case:
         //      - Fast path: single batch POST (all new).
-        //      - Slow path: per-item POSTs if batch is rejected for duplicates,
+        //      - Slow path: sequential per-item POSTs in chunks,
         //                   so new items are never silently lost with the dupes.
         let added: any[] = [];
         let alreadyInList: any[] = [];
@@ -75,7 +82,7 @@ export class AddIpToListRule implements RuleHandler {
             const preview = alreadyInListIps.length > 10
                 ? `${alreadyInListIps.slice(0, 10).join(', ')} … (+${alreadyInListIps.length - 10} more)`
                 : alreadyInListIps.join(', ');
-            console.log(`  ${alreadyInListIps.length} IP(s) already in list: ${preview}`);
+            log(`  ${alreadyInListIps.length} IP(s) already in list: ${preview}`);
         }
         if (failed.length > 0) {
             const failedIps = failed.map(i => i.ip);
@@ -86,12 +93,16 @@ export class AddIpToListRule implements RuleHandler {
         }
 
         if (added.length === 0) {
-            console.log(`  No new IPs added to list for rule ${rule.id}.`);
+            log(`  No new IPs added to list for rule ${rule.id}.`);
             return;
         }
 
-        // 4. Batch-insert audit log entries ONLY for newly added IPs.
+        // 4. Pre-compute metadata string ONCE — identical for every IP in this batch.
+        //    Avoids calling JSON.stringify() inside the .map() for every row.
+        const metadata = JSON.stringify({ cfListId, cfOperationIds: operationIds });
         const now = new Date();
+
+        // 5. Batch-insert audit log entries ONLY for newly added IPs.
         const addedSet = new Set(added.map(i => i.ip));
         const newlyAdded = flaggedIPs.filter(({ ip }) => addedSet.has(ip));
         await actionLogger.logActions(
@@ -105,12 +116,12 @@ export class AddIpToListRule implements RuleHandler {
                 requestCount: count,
                 // cfOperationIds lets us trace back to the exact CF async
                 // operation(s) that added this IP — useful for auditing/rollback.
-                metadata: JSON.stringify({ cfListId, cfOperationIds: operationIds }),
+                metadata,
                 timestamp: now,
             }))
         );
 
-        console.log(
+        log(
             `  Done. Added: ${added.length}, Already in list: ${alreadyInList.length}, Failed: ${failed.length}.`
         );
     }

@@ -70,7 +70,11 @@ export class ListsApi extends CloudflareApiBase {
 
     /**
      * Safely adds items to a CF list, handling duplicates.
-     * Ported from CloudflareIpApi.addItemsToListSafe.
+     *
+     * Fast path  — single batch POST (all new items).
+     * Slow path  — sequential chunks of CHUNK_SIZE, with per-item POSTs
+     *              running concurrently within each chunk to respect
+     *              CF API rate limits (1200 req/5min).
      */
     async addItemsSafe(
         cfListId: string,
@@ -80,6 +84,7 @@ export class ListsApi extends CloudflareApiBase {
             return { added: [], alreadyInList: [], failed: [], operationIds: [] };
         }
 
+        // ── Fast path: single batch POST ──────────────────────────────────────
         try {
             const operationId = await this.addItems(cfListId, items);
             return {
@@ -97,6 +102,9 @@ export class ListsApi extends CloudflareApiBase {
             console.log(`  Batch rejected (duplicates detected). Falling back to per-item adds…`);
         }
 
+        // ── Slow path: per-item POSTs ─────────────────────────────────────────
+        // Process in sequential chunks of CHUNK_SIZE to respect CF rate limits
+        // (1200 req/5min). Items WITHIN each chunk run concurrently.
         const CHUNK_SIZE = 20;
         const added: any[] = [];
         const alreadyInList: any[] = [];

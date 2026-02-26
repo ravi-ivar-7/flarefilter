@@ -1,5 +1,6 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1';
 import { actionLogs } from '@flarefilter/db/src/schema/zones';
+import { log } from '../log';
 
 export interface ActionLogParams {
     tenantId: string;
@@ -12,6 +13,9 @@ export interface ActionLogParams {
     metadata?: string;
     timestamp?: Date;
 }
+
+// D1 supports at most ~100 rows per INSERT statement.
+const D1_MAX_INSERT_ROWS = 100;
 
 export class ActionLogger {
     constructor(private db: DrizzleD1Database<any>) { }
@@ -26,8 +30,8 @@ export class ActionLogger {
     /**
      * Batch-inserts multiple action log entries in a single DB write.
      *
-     * Prefer this over calling logAction() in a loop — dramatically reduces
-     * D1 write round-trips when processing many IPs at once.
+     * D1 has a ~100 row per-INSERT limit, so large batches are automatically
+     * chunked to avoid silent failures.
      */
     async logActions(entries: ActionLogParams[]): Promise<void> {
         if (entries.length === 0) return;
@@ -47,11 +51,24 @@ export class ActionLogger {
         }));
 
         try {
-            await this.db.insert(actionLogs).values(rows);
+            // Chunk inserts to respect D1's per-statement row limit.
+            if (rows.length <= D1_MAX_INSERT_ROWS) {
+                await this.db.insert(actionLogs).values(rows);
+            } else {
+                const chunks: typeof rows[] = [];
+                for (let i = 0; i < rows.length; i += D1_MAX_INSERT_ROWS) {
+                    chunks.push(rows.slice(i, i + D1_MAX_INSERT_ROWS));
+                }
+                // Use db.batch() to send all chunks in one HTTP round-trip.
+                await (this.db as any).batch(
+                    chunks.map(chunk => this.db.insert(actionLogs).values(chunk))
+                );
+            }
+
             const preview = entries.length > 10
                 ? `${entries.slice(0, 10).map(e => e.targetValue).join(', ')} … (+${entries.length - 10} more)`
                 : entries.map(e => e.targetValue).join(', ');
-            console.log(`  > Logged ${entries.length} action(s): ${preview}`);
+            log(`  > Logged ${entries.length} action(s): ${preview}`);
         } catch (error) {
             console.error(`Failed to batch-write ${entries.length} action log(s):`, error);
         }

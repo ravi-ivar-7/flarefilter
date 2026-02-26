@@ -4,11 +4,12 @@ import { runCronTasks } from './cron';
 // Shared Env bindings — only D1 is needed; BLOCKLIST KV removed (unused).
 export interface Env {
     DB: D1Database;
+    DEBUG: string;
 }
 
 const app = new Hono<{ Bindings: Env }>();
 
-app.get('/', (c) => c.text('FlareFilter Worker is running!'));
+app.get('/', (c) => c.text('OK'));
 
 export default {
     // 1. Fetch event (Hono router for explicit API calls from outside the dashboard)

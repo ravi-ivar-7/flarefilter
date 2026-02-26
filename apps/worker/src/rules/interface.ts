@@ -15,6 +15,9 @@ export interface RuleContext {
     rule: any; // The generic DB row. We cast this inside the specific handlers.
     cf: CloudflareClient;
     actionLogger: ActionLogger;
+    /** Pre-fetched flagged IPs from a batched GraphQL call. When present,
+     *  the handler should skip its own analytics query. */
+    prefetchedIps?: { ip: string; count: number }[];
 }
 
 export interface RuleHandler {

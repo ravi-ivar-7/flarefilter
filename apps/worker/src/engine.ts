@@ -1,32 +1,57 @@
 import { RuleHandlers } from './rules/index';
 import { CloudflareClient } from './lib/cloudflare/client';
 import { ActionLogger } from './lib/actions/logger';
-import { RULES_MANIFEST } from '@flarefilter/rules';
+import { log } from './lib/log';
 
 import { cloudflareAccounts } from '@flarefilter/db/src/schema/zones';
 import { ZoneConfig } from './rules/interface';
-import { DrizzleD1Database } from 'drizzle-orm/d1';
-import { and, eq } from 'drizzle-orm';
+
+// Shape of a pre-loaded account row from cron.ts.
+type AccountRow = typeof cloudflareAccounts.$inferSelect;
 
 export class RuleEngine {
-    constructor(private db: DrizzleD1Database<any>) { }
+    // Cache CloudflareClient per account to avoid redundant allocations
+    // when multiple zones share the same CF account.
+    private clientCache = new Map<string, CloudflareClient>();
 
     /**
-     * Executes all rules configured for a specific zone.
-     *
-     * The Engine fetches the right Cloudflare credentials from the DB and
-     * dispatches active rules to their registered handler plugins
-     * (e.g. AddIpToList, JSChallenge).
+     * @param accountMap   Pre-loaded map of cfAccountRef → account row.
+     * @param actionLogger Shared across all zones — stateless, safe to reuse.
      */
-    async processZone(zone: ZoneConfig): Promise<void> {
-        console.log(`\nProcessing zone: ${zone.name} (${zone.cfZoneId})`);
+    constructor(
+        private accountMap: Map<string, AccountRow>,
+        private actionLogger: ActionLogger
+    ) { }
 
-        // 1. Fetch Cloudflare API credentials for this zone's account.
-        const [account] = await this.db
-            .select()
-            .from(cloudflareAccounts)
-            .where(eq(cloudflareAccounts.id, zone.cfAccountRef));
+    /**
+     * Returns a cached CloudflareClient for the given account, creating
+     * one on first access.
+     */
+    private getClient(account: AccountRow): CloudflareClient {
+        let client = this.clientCache.get(account.id);
+        if (!client) {
+            client = new CloudflareClient(account.cfAccountId, account.cfApiToken);
+            this.clientCache.set(account.id, client);
+        }
+        return client;
+    }
 
+    /**
+     * Executes all rules for a zone.
+     *
+     * Both `activeRules` and (optionally) `prefetchedIpsByZone` are supplied
+     * by the cron orchestrator — this method performs ZERO D1 or analytics
+     * round-trips on its own.
+     */
+    async processZone(
+        zone: ZoneConfig,
+        activeRules: any[],
+        prefetchedIpsByZone?: Map<string, { ip: string; count: number }[]>
+    ): Promise<void> {
+        log(`\nProcessing zone: ${zone.name} (${zone.cfZoneId})`);
+
+        // 1. O(1) account lookup — no DB query.
+        const account = this.accountMap.get(zone.cfAccountRef);
         if (!account) {
             console.error(
                 `No CF account found for zone ${zone.name} (cfAccountRef=${zone.cfAccountRef})`
@@ -34,34 +59,16 @@ export class RuleEngine {
             return;
         }
 
-        const cf = new CloudflareClient(account.cfAccountId, account.cfApiToken);
-        const actionLogger = new ActionLogger(this.db);
-
-        // 2. Fetch all active rules for this zone across every rule table.
-        const ruleTables = Object.values(RULES_MANIFEST).filter(m => m.table);
-
-        const ruleResults = (await Promise.all(
-            ruleTables.map(t =>
-                this.db
-                    .select()
-                    .from(t.table!)
-                    .where(and(eq(t.table!.zoneConfigId, zone.id), eq(t.table!.isActive, true)))
-            )
-        )) as any[][];
-
-        const activeRules = ruleResults.flatMap((res, i) =>
-            res.map(r => ({ ...r, type: ruleTables[i].type }))
-        );
+        const cf = this.getClient(account);
 
         if (activeRules.length === 0) {
-            console.log(`Zone ${zone.name} has no active rules. Skipping.`);
+            log(`Zone ${zone.name} has no active rules. Skipping.`);
             return;
         }
 
-        // 3. Determine which rules are due this cycle and dispatch them.
-        //    Rules within a zone run CONCURRENTLY — each does independent
-        //    network I/O (GraphQL + REST), so there's no reason to serialise.
-        //    allSettled ensures one failing rule doesn't abort the others.
+        // 2. Determine which rules are due this cycle and dispatch them.
+        //    Drift tolerance: accepts current minute OR current-1 minute
+        //    so a slightly late cron still fires.
         const minutesSinceEpoch = Math.floor(Date.now() / (60 * 1000));
 
         const ruleSettled = await Promise.allSettled(
@@ -69,12 +76,14 @@ export class RuleEngine {
                 const windowSeconds = rule.windowSeconds ?? 300;
                 const intervalMins = Math.max(1, Math.floor(windowSeconds / 60));
 
-                if (minutesSinceEpoch % intervalMins !== 0) {
-                    // Compute the UTC timestamp of the next scheduled slot.
+                const currentSlot = minutesSinceEpoch % intervalMins;
+                const isDue = currentSlot === 0 || currentSlot === intervalMins - 1;
+
+                if (!isDue) {
                     const nextSlotEpochMs =
-                        (minutesSinceEpoch + (intervalMins - (minutesSinceEpoch % intervalMins))) * 60 * 1000;
+                        (minutesSinceEpoch + (intervalMins - currentSlot)) * 60 * 1000;
                     const nextSlotUTC = new Date(nextSlotEpochMs).toISOString().slice(11, 16) + ' UTC';
-                    console.log(
+                    log(
                         `  Skipping rule ${rule.id} (runs every ${intervalMins}m, next at ${nextSlotUTC})`
                     );
                     return;
@@ -86,12 +95,22 @@ export class RuleEngine {
                     return;
                 }
 
-                console.log(`  Executing rule ${rule.id} (type=${rule.type}, interval=${intervalMins}m)`);
-                await handler.execute({ zone, rule, cf, actionLogger });
+                log(`  Executing rule ${rule.id} (type=${rule.type}, interval=${intervalMins}m)`);
+
+                // Pass pre-fetched IPs if available (from batched GQL).
+                const prefetchedIps = prefetchedIpsByZone?.get(zone.cfZoneId);
+
+                await handler.execute({
+                    zone,
+                    rule,
+                    cf,
+                    actionLogger: this.actionLogger,
+                    prefetchedIps,
+                });
             })
         );
 
-        // Surface any unhandled rule-level errors — same pattern as cron.ts for zones.
+        // Surface any unhandled rule-level errors.
         ruleSettled.forEach((result, i) => {
             if (result.status === 'rejected') {
                 console.error(

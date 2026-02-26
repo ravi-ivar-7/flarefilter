@@ -126,9 +126,9 @@ export async function action({ request, context }: Route.ActionArgs) {
   if (intent === "delete_account") {
     const accountId = formData.get("accountId") as string;
     if (accountId) {
-      // Guard: refuse if any zones still reference this account
+      // Guard: refuse if any zones in THIS tenant still reference this account
       const dependentZones = await db.select().from(zoneConfigs)
-        .where(eq(zoneConfigs.cfAccountRef, accountId));
+        .where(and(eq(zoneConfigs.cfAccountRef, accountId), eq(zoneConfigs.tenantId, tenantId)));
       if (dependentZones.length > 0) {
         return { error: `Cannot delete — ${dependentZones.length} zone(s) still use this account. Remove those zones first.` };
       }
@@ -142,21 +142,19 @@ export async function action({ request, context }: Route.ActionArgs) {
   if (intent === "delete_zone") {
     const zoneId = formData.get("zoneId") as string;
     if (zoneId) {
-      // 1. Delete transient logs and activity
-      await db.delete(actionLogs).where(eq(actionLogs.zoneConfigId, zoneId));
-      await db.delete(requestActivity).where(eq(requestActivity.zoneConfigId, zoneId));
-
-      // 2. Cascade delete rules across ALL rule tables in the registry
-      for (const config of Object.values(RULE_REGISTRY)) {
-        if (config.table) {
-          await db.delete(config.table).where(eq(config.table.zoneConfigId, zoneId));
-        }
-      }
-
-      // 3. Finally delete the zone itself
-      await db.delete(zoneConfigs).where(
-        and(eq(zoneConfigs.id, zoneId), eq(zoneConfigs.tenantId, tenantId))
-      );
+      // Atomic cascade: batch all deletes into a single D1 round-trip.
+      // All deletes are tenant-scoped to prevent cross-tenant data corruption.
+      const deletes: any[] = [
+        db.delete(actionLogs).where(and(eq(actionLogs.zoneConfigId, zoneId), eq(actionLogs.tenantId, tenantId))),
+        db.delete(requestActivity).where(and(eq(requestActivity.zoneConfigId, zoneId), eq(requestActivity.tenantId, tenantId))),
+        ...Object.values(RULE_REGISTRY)
+          .filter(c => c.table)
+          .map(c => db.delete(c.table).where(and(eq(c.table.zoneConfigId, zoneId), eq(c.table.tenantId, tenantId)))),
+        db.delete(zoneConfigs).where(
+          and(eq(zoneConfigs.id, zoneId), eq(zoneConfigs.tenantId, tenantId))
+        ),
+      ];
+      await (db as any).batch(deletes);
     }
     return null;
   }
@@ -226,6 +224,17 @@ export async function action({ request, context }: Route.ActionArgs) {
     const organizationId = formData.get("organizationId") as string;
     const name = formData.get("name") as string;
     if (organizationId && name) {
+      // Only owners and admins can rename an organization.
+      const membership = await db
+        .select({ role: memberTable.role })
+        .from(memberTable)
+        .where(and(eq(memberTable.organizationId, organizationId), eq(memberTable.userId, sessionData.user.id)))
+        .limit(1);
+      const userRole = membership[0]?.role;
+      if (!userRole || (userRole !== 'owner' && userRole !== 'admin')) {
+        return { error: "Permission Denied: Only owners or admins can rename organizations." };
+      }
+
       await auth.api.updateOrganization({
         headers: request.headers,
         body: { organizationId, data: { name } }
@@ -249,30 +258,29 @@ export async function action({ request, context }: Route.ActionArgs) {
         return { error: "Permission Denied: Only organization owners can delete organizations." };
       }
 
-      // 1. Delete all application data tied to this organization to avoid FK constraint errors
-
-      // Fetch zones to clean up their dependent logs/activity/rules
+      // 1. Fetch zones to build cascade delete queries
       const zones = await db.select().from(zoneConfigs).where(eq(zoneConfigs.tenantId, orgId));
-      for (const zone of zones) {
-        // Delete transient data
-        await db.delete(actionLogs).where(eq(actionLogs.zoneConfigId, zone.id));
-        await db.delete(requestActivity).where(eq(requestActivity.zoneConfigId, zone.id));
 
-        // Delete rules from all registries
-        for (const config of Object.values(RULE_REGISTRY)) {
-          if (config.table) {
-            await db.delete(config.table).where(eq(config.table.zoneConfigId, zone.id));
-          }
+      // 2. Atomic cascade: batch ALL deletes into a single D1 round-trip
+      const ruleConfigs = Object.values(RULE_REGISTRY).filter(c => c.table);
+      const deletes: any[] = [];
+
+      for (const zone of zones) {
+        deletes.push(db.delete(actionLogs).where(eq(actionLogs.zoneConfigId, zone.id)));
+        deletes.push(db.delete(requestActivity).where(eq(requestActivity.zoneConfigId, zone.id)));
+        for (const config of ruleConfigs) {
+          deletes.push(db.delete(config.table).where(eq(config.table.zoneConfigId, zone.id)));
         }
       }
 
-      // Delete zones themselves
-      await db.delete(zoneConfigs).where(eq(zoneConfigs.tenantId, orgId));
+      deletes.push(db.delete(zoneConfigs).where(eq(zoneConfigs.tenantId, orgId)));
+      deletes.push(db.delete(cloudflareAccounts).where(eq(cloudflareAccounts.tenantId, orgId)));
 
-      // Delete cloudflare accounts
-      await db.delete(cloudflareAccounts).where(eq(cloudflareAccounts.tenantId, orgId));
+      if (deletes.length > 0) {
+        await (db as any).batch(deletes);
+      }
 
-      // 2. Finally delete from the auth system (which handles members/invitations)
+      // 3. Finally delete from the auth system (which handles members/invitations)
       await auth.api.deleteOrganization({
         headers: request.headers,
         body: { organizationId: orgId }
@@ -367,7 +375,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   const relativeValue = url.searchParams.get("relative") || "30m";
   const startStr = url.searchParams.get("start");
   const endStr = url.searchParams.get("end");
-  const queryLimit = parseInt(url.searchParams.get("limit") || (tab === "logs" ? "100" : "10"));
+  const queryLimit = Math.min(parseInt(url.searchParams.get("limit") || (tab === "logs" ? "100" : "10")), 1000);
   const zoneIdFilter = url.searchParams.get("zoneId");
 
   const conditions = [eq(actionLogs.tenantId, tenantId)];
