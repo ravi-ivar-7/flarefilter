@@ -7,7 +7,6 @@ const inputCls = "block w-full rounded-md border-slate-200 text-sm focus:border-
 
 interface ActionLogsProps {
     zones: any[];
-    orgName: string;
     dateRange: DateRange;
     onDateRangeChange: (v: DateRange) => void;
     limit: number;
@@ -21,7 +20,6 @@ interface ActionLogsProps {
 
 export function ActionLogs({
     zones,
-    orgName,
     dateRange,
     onDateRangeChange,
     limit,

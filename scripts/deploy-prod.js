@@ -154,17 +154,12 @@ async function deploy() {
     fs.writeFileSync(dashboardConfPath, dashboardConf);
     success('apps/dashboard/wrangler.jsonc updated');
 
-    const workerConfPath = path.join(__dirname, '../apps/worker/wrangler.toml');
+    const workerConfPath = path.join(__dirname, '../apps/worker/wrangler.jsonc');
     let workerConf = fs.readFileSync(workerConfPath, 'utf8');
-    workerConf = workerConf.replace(/database_id\s*=\s*"[^"]*"/, `database_id = "${dbId}"`);
-    workerConf = workerConf.replace(/id\s*=\s*"[^"]*"(\s*#?\s*KV id)/, `id = "${kvId}"$1`);
-    if (!workerConf.includes(`id = "${kvId}"`)) {
-        workerConf = workerConf.replace(/\[\[kv_namespaces\]\][^]*?id\s*=\s*"[^"]*"/, (match) =>
-            match.replace(/id\s*=\s*"[^"]*"/, `id = "${kvId}"`)
-        );
-    }
+    workerConf = workerConf.replace(/"database_id":\s*"[^"]*"/, `"database_id": "${dbId}"`);
+    workerConf = workerConf.replace(/"id":\s*"[^"]*"/, `"id": "${kvId}"`);
     fs.writeFileSync(workerConfPath, workerConf);
-    success('apps/worker/wrangler.toml updated');
+    success('apps/worker/wrangler.jsonc updated');
 
     console.log('');
 
@@ -187,44 +182,49 @@ async function deploy() {
     success('Dashboard deployed');
 
     // ── 6. Sync Cloudflare Secrets ───────────
-    step('Syncing Cloudflare production secrets');
+    step('Syncing Cloudflare production secrets from .prod.vars');
 
-    // Extract the actual deploy URL from the wrangler deploy output
-    let prodUrl = '';
-    const urlMatch = deployOutput.match(/https:\/\/[a-zA-Z0-9-]+\.[a-zA-Z0-9-]+\.workers\.dev/);
-    if (urlMatch) {
-        prodUrl = urlMatch[0];
-        info(`Detected production URL: ${prodUrl}`);
-    } else {
-        warn('Could not automatically detect production URL.');
-        prodUrl = '<YOUR_PRODUCTION_URL>'; // Fallback
-    }
-
-    const devVarsPath = path.join(__dirname, '../apps/dashboard/.dev.vars');
-    let devVars = '';
+    const prodVarsPath = path.join(__dirname, '../apps/dashboard/.prod.vars');
+    let prodVars = '';
     try {
-        devVars = fs.readFileSync(devVarsPath, 'utf8');
+        prodVars = fs.readFileSync(prodVarsPath, 'utf8');
     } catch {
-        // Ignore if missing
+        warn('.prod.vars not found — skipping secret sync. Create apps/dashboard/.prod.vars to automate this.');
     }
 
-    // Parse current local secret value
-    const secretMatch = devVars.match(/BETTER_AUTH_SECRET="([^"]+)"/);
-    const secret = secretMatch ? secretMatch[1] : '';
+    const parseVar = (content, key) => {
+        const match = content.match(new RegExp(`${key}="([^"]+)"`));
+        return match ? match[1] : '';
+    };
 
-    if (secret) {
+    const pushSecret = (key, value) => {
+        if (!value) return false;
         run(
-            `echo "${secret}" | npx wrangler secret put BETTER_AUTH_SECRET --config apps/dashboard/wrangler.jsonc`,
+            `printf '%s' "${value}" | npx wrangler secret put ${key} --config apps/dashboard/wrangler.jsonc`,
             { silent: true, ignoreError: true }
         );
-    }
+        return true;
+    };
 
-    if (prodUrl !== '<YOUR_PRODUCTION_URL>') {
-        run(
-            `echo "${prodUrl}" | npx wrangler secret put BETTER_AUTH_BASE_URL --config apps/dashboard/wrangler.jsonc`,
-            { silent: true, ignoreError: true }
-        );
-        success('Cloudflare secrets updated for production');
+    if (prodVars) {
+        const authSecret = parseVar(prodVars, 'BETTER_AUTH_SECRET');
+        const baseUrl = parseVar(prodVars, 'BETTER_AUTH_BASE_URL');
+        const gmailUser = parseVar(prodVars, 'GMAIL_USER');
+        const gmailPass = parseVar(prodVars, 'GMAIL_APP_PASSWORD');
+
+        if (!authSecret) warn('BETTER_AUTH_SECRET is empty in .prod.vars — auth will fail in production!');
+        if (!baseUrl) warn('BETTER_AUTH_BASE_URL is empty in .prod.vars — auth will fail in production!');
+
+        pushSecret('BETTER_AUTH_SECRET', authSecret) && info('BETTER_AUTH_SECRET pushed');
+        pushSecret('BETTER_AUTH_BASE_URL', baseUrl) && info('BETTER_AUTH_BASE_URL pushed');
+
+        if (gmailUser && gmailPass) {
+            pushSecret('GMAIL_USER', gmailUser) && info('GMAIL_USER pushed');
+            pushSecret('GMAIL_APP_PASSWORD', gmailPass) && info('GMAIL_APP_PASSWORD pushed');
+            success('All secrets synced (email verification enabled)');
+        } else {
+            success('Core secrets synced (Gmail not configured — accounts will auto-activate)');
+        }
     }
 
     // ── Done ─────────────────────────────────

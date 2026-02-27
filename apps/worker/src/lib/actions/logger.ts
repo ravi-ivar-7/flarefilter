@@ -3,7 +3,7 @@ import { actionLogs } from '@flarefilter/db/src/schema/zones';
 import { log } from '../log';
 
 export interface ActionLogParams {
-    tenantId: string;
+    userId: string;
     zoneConfigId: string;
     ruleId: string;
     actionTaken: string;
@@ -39,7 +39,7 @@ export class ActionLogger {
         const now = new Date();
         const rows = entries.map(p => ({
             id: crypto.randomUUID(),
-            tenantId: p.tenantId,
+            userId: p.userId,
             zoneConfigId: p.zoneConfigId,
             ruleId: p.ruleId,
             actionTaken: p.actionTaken,

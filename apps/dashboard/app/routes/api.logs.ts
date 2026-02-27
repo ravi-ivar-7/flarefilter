@@ -12,10 +12,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const auth = getAuth(env);
     const sessionData = await auth.api.getSession({ headers: request.headers });
     if (!sessionData?.user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-    let tenantId = sessionData.session.activeOrganizationId;
-    if (!tenantId) {
-        return Response.json([]); // No active org — return empty, don't leak other tenants' data.
-    }
+    let userId = sessionData.user.id;
 
     const formData = await request.formData();
     const zoneId = formData.get("zoneId") as string;
@@ -24,7 +21,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const windowSeconds = parseInt(formData.get("windowSeconds") as string || "3600", 10);
 
     const conditions = [];
-    if (tenantId) conditions.push(eq(actionLogs.tenantId, tenantId));
+    if (userId) conditions.push(eq(actionLogs.userId, userId));
     if (zoneId) conditions.push(eq(actionLogs.zoneConfigId, zoneId));
     if (actions) {
         const actionArray = actions.split(",").map(a => a.trim()).filter(Boolean);

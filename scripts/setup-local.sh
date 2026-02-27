@@ -43,6 +43,13 @@ if [ ! -f apps/dashboard/.dev.vars ]; then
   cat <<EOF > apps/dashboard/.dev.vars
 BETTER_AUTH_BASE_URL="http://localhost:5173"
 BETTER_AUTH_SECRET="$(openssl rand -base64 32)"
+
+# Optional: fill in to enable email verification via Resend (https://resend.com).
+# Leave blank → accounts auto-activate (no email needed).
+RESEND_API_KEY=""
+# Optional: custom from address (must be from a Resend-verified domain).
+# Leave blank to use Resend's test sender (onboarding@resend.dev)
+RESEND_FROM=""
 EOF
   log_success "apps/dashboard/.dev.vars created"
 else

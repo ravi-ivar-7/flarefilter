@@ -107,7 +107,7 @@ export class AddIpToListRule implements RuleHandler {
         const newlyAdded = flaggedIPs.filter(({ ip }) => addedSet.has(ip));
         await actionLogger.logActions(
             newlyAdded.map(({ ip, count }) => ({
-                tenantId: zone.tenantId,
+                userId: zone.userId,
                 zoneConfigId: zone.id,
                 ruleId: rule.id,
                 actionTaken: 'IP_ADDED_TO_LIST',

@@ -1,8 +1,6 @@
 import { drizzle } from "drizzle-orm/d1";
-import { cloudflareAccounts, zoneConfigs, addIpToListRules, actionLogs, requestActivity } from "@flarefilter/db/src/schema/zones";
-import { organization as orgTable, member as memberTable } from "@flarefilter/db/src/schema/organizations";
+import { cloudflareAccounts, zoneConfigs, addIpToListRules, actionLogs } from "@flarefilter/db/src/schema/zones";
 import { desc, eq, sql, and, gte, lte } from "drizzle-orm";
-import type { Route } from "./+types/dashboard";
 import { useNavigation, useActionData, useRevalidator, redirect } from "react-router";
 import { getAuth } from "~/lib/auth";
 import { useState, useEffect, useRef } from "react";
@@ -18,7 +16,7 @@ import { Lists } from "~/components/dashboard/views/Lists";
 import { Profile } from "~/components/dashboard/views/Profile";
 import { type DateRange } from "~/components/shared/DateRangePicker";
 import { useSearchParams } from "react-router";
-
+import type { Route } from "./+types/dashboard";
 
 export const meta: Route.MetaFunction = () => [
   { title: "Dashboard - FlareFilter" },
@@ -29,30 +27,13 @@ export async function action({ request, context }: Route.ActionArgs) {
   const env = context.cloudflare.env;
   if (!env.DB) throw new Error("D1 binding 'DB' not configured.");
 
-  const db = drizzle(env.DB, { schema: { cloudflareAccounts, zoneConfigs, addIpToListRules, actionLogs, orgTable, memberTable } });
+  const db = drizzle(env.DB, { schema: { cloudflareAccounts, zoneConfigs, addIpToListRules, actionLogs } });
 
   const auth = getAuth(env);
   const sessionData = await auth.api.getSession({ headers: request.headers });
   if (!sessionData?.user) throw redirect("/auth?mode=login");
 
-  let tenantId = sessionData.session.activeOrganizationId;
-  if (!tenantId) {
-    // Fallback: find first membership via DB (faster than auth API)
-    const firstMembership = await db
-      .select({ orgId: memberTable.organizationId })
-      .from(memberTable)
-      .where(eq(memberTable.userId, sessionData.user.id))
-      .limit(1);
-    if (firstMembership.length > 0) {
-      tenantId = firstMembership[0].orgId;
-    } else {
-      const newOrg = await auth.api.createOrganization({
-        headers: request.headers,
-        body: { name: `${sessionData.user.name}'s Organization`, slug: crypto.randomUUID() },
-      });
-      tenantId = newOrg!.id;
-    }
-  }
+  const userId = sessionData.user.id;
 
   const formData = await request.formData();
   const intent = formData.get("intent") as string;
@@ -83,7 +64,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 
       await db.insert(cloudflareAccounts).values({
         id: crypto.randomUUID(),
-        tenantId,
+        userId,
         label,
         cfAccountId,
         cfApiToken, // TODO: encrypt at rest
@@ -99,7 +80,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     const cfAccountRef = formData.get("cfAccountRef") as string;
     if (name && cfZoneId && cfAccountRef) {
       await db.insert(zoneConfigs).values({
-        id: crypto.randomUUID(), tenantId, cfAccountRef, name, cfZoneId,
+        id: crypto.randomUUID(), userId, cfAccountRef, name, cfZoneId,
         createdAt: new Date(), updatedAt: new Date(),
       });
     }
@@ -114,7 +95,7 @@ export async function action({ request, context }: Route.ActionArgs) {
       const values = config.prepareValues(formData);
       await db.insert(config.table).values({
         id: crypto.randomUUID(),
-        tenantId,
+        userId,
         ...values,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -128,12 +109,12 @@ export async function action({ request, context }: Route.ActionArgs) {
     if (accountId) {
       // Guard: refuse if any zones in THIS tenant still reference this account
       const dependentZones = await db.select().from(zoneConfigs)
-        .where(and(eq(zoneConfigs.cfAccountRef, accountId), eq(zoneConfigs.tenantId, tenantId)));
+        .where(and(eq(zoneConfigs.cfAccountRef, accountId), eq(zoneConfigs.userId, userId)));
       if (dependentZones.length > 0) {
         return { error: `Cannot delete — ${dependentZones.length} zone(s) still use this account. Remove those zones first.` };
       }
       await db.delete(cloudflareAccounts).where(
-        and(eq(cloudflareAccounts.id, accountId), eq(cloudflareAccounts.tenantId, tenantId))
+        and(eq(cloudflareAccounts.id, accountId), eq(cloudflareAccounts.userId, userId))
       );
     }
     return null;
@@ -143,15 +124,14 @@ export async function action({ request, context }: Route.ActionArgs) {
     const zoneId = formData.get("zoneId") as string;
     if (zoneId) {
       // Atomic cascade: batch all deletes into a single D1 round-trip.
-      // All deletes are tenant-scoped to prevent cross-tenant data corruption.
+      // All deletes are user-scoped to prevent cross-user data corruption.
       const deletes: any[] = [
-        db.delete(actionLogs).where(and(eq(actionLogs.zoneConfigId, zoneId), eq(actionLogs.tenantId, tenantId))),
-        db.delete(requestActivity).where(and(eq(requestActivity.zoneConfigId, zoneId), eq(requestActivity.tenantId, tenantId))),
+        db.delete(actionLogs).where(and(eq(actionLogs.zoneConfigId, zoneId), eq(actionLogs.userId, userId))),
         ...Object.values(RULE_REGISTRY)
           .filter(c => c.table)
-          .map(c => db.delete(c.table).where(and(eq(c.table.zoneConfigId, zoneId), eq(c.table.tenantId, tenantId)))),
+          .map(c => db.delete(c.table).where(and(eq(c.table.zoneConfigId, zoneId), eq(c.table.userId, userId)))),
         db.delete(zoneConfigs).where(
-          and(eq(zoneConfigs.id, zoneId), eq(zoneConfigs.tenantId, tenantId))
+          and(eq(zoneConfigs.id, zoneId), eq(zoneConfigs.userId, userId))
         ),
       ];
       await (db as any).batch(deletes);
@@ -167,7 +147,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     if (ruleId && config) {
       await db.delete(actionLogs).where(eq(actionLogs.ruleId, ruleId));
       await db.delete(config.table).where(
-        and(eq(config.table.id, ruleId), eq(config.table.tenantId, tenantId))
+        and(eq(config.table.id, ruleId), eq(config.table.userId, userId))
       );
     }
     return null;
@@ -180,14 +160,14 @@ export async function action({ request, context }: Route.ActionArgs) {
       // 1. Update the zone status
       await db.update(zoneConfigs)
         .set({ isActive, updatedAt: new Date() })
-        .where(and(eq(zoneConfigs.id, zoneId), eq(zoneConfigs.tenantId, tenantId)));
+        .where(and(eq(zoneConfigs.id, zoneId), eq(zoneConfigs.userId, userId)));
 
       // 2. Cascade the status to all rules in this zone across ALL implemented rule tables in the registry
       for (const config of Object.values(RULE_REGISTRY)) {
         if (config.table) {
           await db.update(config.table)
             .set({ isActive, updatedAt: new Date() })
-            .where(and(eq(config.table.zoneConfigId, zoneId), eq(config.table.tenantId, tenantId)));
+            .where(and(eq(config.table.zoneConfigId, zoneId), eq(config.table.userId, userId)));
         }
       }
     }
@@ -203,7 +183,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     if (ruleId && config) {
       await db.update(config.table)
         .set({ isActive, updatedAt: new Date() })
-        .where(and(eq(config.table.id, ruleId), eq(config.table.tenantId, tenantId)));
+        .where(and(eq(config.table.id, ruleId), eq(config.table.userId, userId)));
     }
     return null;
   }
@@ -220,87 +200,6 @@ export async function action({ request, context }: Route.ActionArgs) {
     throw redirect("/dashboard/profile");
   }
 
-  if (intent === "update_organization") {
-    const organizationId = formData.get("organizationId") as string;
-    const name = formData.get("name") as string;
-    if (organizationId && name) {
-      // Only owners and admins can rename an organization.
-      const membership = await db
-        .select({ role: memberTable.role })
-        .from(memberTable)
-        .where(and(eq(memberTable.organizationId, organizationId), eq(memberTable.userId, sessionData.user.id)))
-        .limit(1);
-      const userRole = membership[0]?.role;
-      if (!userRole || (userRole !== 'owner' && userRole !== 'admin')) {
-        return { error: "Permission Denied: Only owners or admins can rename organizations." };
-      }
-
-      await auth.api.updateOrganization({
-        headers: request.headers,
-        body: { organizationId, data: { name } }
-      });
-    }
-    // Redirect so the loader re-runs with fresh org name
-    throw redirect("/dashboard/profile");
-  }
-
-  if (intent === "delete_organization") {
-    const orgId = formData.get("organizationId") as string;
-    if (orgId) {
-      // 0. Authorization: query DB directly — faster and correct (no role-stripping)
-      const membership = await db
-        .select({ role: memberTable.role })
-        .from(memberTable)
-        .where(and(eq(memberTable.organizationId, orgId), eq(memberTable.userId, sessionData.user.id)))
-        .limit(1);
-      const userRole = membership[0]?.role;
-      if (!userRole || userRole !== 'owner') {
-        return { error: "Permission Denied: Only organization owners can delete organizations." };
-      }
-
-      // 1. Fetch zones to build cascade delete queries
-      const zones = await db.select().from(zoneConfigs).where(eq(zoneConfigs.tenantId, orgId));
-
-      // 2. Atomic cascade: batch ALL deletes into a single D1 round-trip
-      const ruleConfigs = Object.values(RULE_REGISTRY).filter(c => c.table);
-      const deletes: any[] = [];
-
-      for (const zone of zones) {
-        deletes.push(db.delete(actionLogs).where(eq(actionLogs.zoneConfigId, zone.id)));
-        deletes.push(db.delete(requestActivity).where(eq(requestActivity.zoneConfigId, zone.id)));
-        for (const config of ruleConfigs) {
-          deletes.push(db.delete(config.table).where(eq(config.table.zoneConfigId, zone.id)));
-        }
-      }
-
-      deletes.push(db.delete(zoneConfigs).where(eq(zoneConfigs.tenantId, orgId)));
-      deletes.push(db.delete(cloudflareAccounts).where(eq(cloudflareAccounts.tenantId, orgId)));
-
-      if (deletes.length > 0) {
-        await (db as any).batch(deletes);
-      }
-
-      // 3. Finally delete from the auth system (which handles members/invitations)
-      await auth.api.deleteOrganization({
-        headers: request.headers,
-        body: { organizationId: orgId }
-      });
-    }
-    // Redirect so the loader re-runs with fresh session (active org changed after delete)
-    throw redirect("/dashboard/profile");
-  }
-  if (intent === "leave_organization") {
-    const orgId = formData.get("organizationId") as string;
-    if (orgId) {
-      await auth.api.leaveOrganization({
-        headers: request.headers,
-        body: { organizationId: orgId }
-      });
-    }
-    // Redirect so loader re-runs with fresh session (active org may have changed)
-    throw redirect("/dashboard/profile");
-  }
-
   return null;
 }
 
@@ -312,59 +211,9 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   const sessionData = await auth.api.getSession({ headers: request.headers });
   if (!sessionData?.user) throw redirect("/auth?mode=login");
 
-  const db = drizzle(env.DB, { schema: { cloudflareAccounts, zoneConfigs, addIpToListRules, actionLogs, orgTable, memberTable } });
+  const userId = sessionData.user.id;
 
-  // Single optimized query: get all orgs the current user belongs to WITH their role
-  // This replaces auth.api.listOrganizations() which strips the member.role field
-  const userOrgMemberships = await db
-    .select({
-      // org fields
-      id: orgTable.id,
-      name: orgTable.name,
-      slug: orgTable.slug,
-      logo: orgTable.logo,
-      createdAt: orgTable.createdAt,
-      metadata: orgTable.metadata,
-      // member fields
-      role: memberTable.role,
-      memberId: memberTable.id,
-    })
-    .from(memberTable)
-    .innerJoin(orgTable, eq(memberTable.organizationId, orgTable.id))
-    .where(eq(memberTable.userId, sessionData.user.id))
-    .orderBy(orgTable.createdAt);
-
-  const orgsWithRoles = userOrgMemberships; // each item has role, memberId, plus org fields
-
-  let tenantId = sessionData.session.activeOrganizationId;
-  let activeOrg: any = null;
-
-  if (!tenantId) {
-    if (orgsWithRoles.length > 0) {
-      tenantId = orgsWithRoles[0].id;
-      activeOrg = orgsWithRoles[0];
-    } else {
-      // No orgs yet — create a default one
-      const newOrg = await auth.api.createOrganization({
-        headers: request.headers,
-        body: { name: `${sessionData.user.name}'s Organization`, slug: crypto.randomUUID() },
-      });
-      tenantId = newOrg!.id;
-      // Re-fetch after creation to get member row with role
-      const created = await db
-        .select({ id: orgTable.id, name: orgTable.name, slug: orgTable.slug, logo: orgTable.logo, createdAt: orgTable.createdAt, metadata: orgTable.metadata, role: memberTable.role, memberId: memberTable.id })
-        .from(memberTable)
-        .innerJoin(orgTable, eq(memberTable.organizationId, orgTable.id))
-        .where(eq(memberTable.userId, sessionData.user.id))
-        .limit(1);
-      activeOrg = created[0] ?? { ...newOrg, role: 'owner' };
-      orgsWithRoles.push(activeOrg);
-    }
-  } else {
-    activeOrg = orgsWithRoles.find((o) => o.id === tenantId) ?? orgsWithRoles[0] ?? null;
-  }
-
-  const orgName = activeOrg?.name || "Default Organization";
+  const db = drizzle(env.DB, { schema: { cloudflareAccounts, zoneConfigs, addIpToListRules, actionLogs } });
 
   const tab = params.tab || "overview";
 
@@ -378,7 +227,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   const queryLimit = Math.min(parseInt(url.searchParams.get("limit") || (tab === "logs" ? "100" : "10")), 1000);
   const zoneIdFilter = url.searchParams.get("zoneId");
 
-  const conditions = [eq(actionLogs.tenantId, tenantId)];
+  const conditions = [eq(actionLogs.userId, userId)];
 
   if (zoneIdFilter) {
     conditions.push(eq(actionLogs.zoneConfigId, zoneIdFilter));
@@ -398,11 +247,11 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   }
 
   const [accounts, zones, recentActions, [{ count: totalBlocks }], ...ruleResults] = await Promise.all([
-    db.select().from(cloudflareAccounts).where(eq(cloudflareAccounts.tenantId, tenantId)).orderBy(desc(cloudflareAccounts.createdAt)),
-    db.select().from(zoneConfigs).where(eq(zoneConfigs.tenantId, tenantId)).orderBy(desc(zoneConfigs.createdAt)),
+    db.select().from(cloudflareAccounts).where(eq(cloudflareAccounts.userId, userId)).orderBy(desc(cloudflareAccounts.createdAt)),
+    db.select().from(zoneConfigs).where(eq(zoneConfigs.userId, userId)).orderBy(desc(zoneConfigs.createdAt)),
     db.select().from(actionLogs).where(and(...conditions)).orderBy(desc(actionLogs.timestamp)).limit(queryLimit),
     db.select({ count: sql<number>`count(*)` }).from(actionLogs).where(and(...conditions)),
-    ...activeRuleConfigs.map(c => db.select().from(c.table).where(eq(c.table.tenantId, tenantId)).orderBy(desc(c.table.createdAt)))
+    ...activeRuleConfigs.map(c => db.select().from(c.table).where(eq(c.table.userId, userId)).orderBy(desc(c.table.createdAt)))
   ]);
 
   const rules = ruleResults.flatMap((res, i) => {
@@ -410,11 +259,11 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     return (res as any[]).map(r => ({ ...r, type }));
   });
 
-  return { user: sessionData.user, orgName, activeOrg, orgs: orgsWithRoles, accounts, zones, rules, recentActions, totalBlocks, currentTab: tab };
+  return { user: sessionData.user, accounts, zones, rules, recentActions, totalBlocks, currentTab: tab };
 }
 
 export default function DashboardPage({ loaderData, params }: Route.ComponentProps) {
-  const { user, orgName, activeOrg, orgs, accounts, zones, rules, recentActions, totalBlocks } = loaderData as any;
+  const { user, accounts, zones, rules, recentActions, totalBlocks } = loaderData as any;
   const currentTab = params.tab || "overview";
   const actionData = useActionData() as { error?: string } | null;
   const navigation = useNavigation();
@@ -647,7 +496,6 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
 
       {activeTab === "overview" && (
         <Overview
-          orgName={orgName}
           dateRange={dateRange}
           onDateRangeChange={setDateRange}
           isLoading={navigation.state !== "idle" || revalidator.state !== "idle"}
@@ -670,7 +518,6 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
         <IPsAnalyzer
           zones={zones}
           accounts={accounts}
-          orgName={orgName}
           dateRange={dateRange}
           onDateRangeChange={setDateRange}
           limit={limit}
@@ -685,7 +532,6 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
       {activeTab === "logs" && (
         <ActionLogs
           zones={zones}
-          orgName={orgName}
           dateRange={dateRange}
           onDateRangeChange={setDateRange}
           limit={limit}
@@ -711,7 +557,7 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
       )}
 
       {activeTab === "profile" && (
-        <Profile user={user} activeOrg={activeOrg} orgs={orgs} />
+        <Profile user={user} />
       )}
 
       {isAccountModalOpen && <AddAccount onClose={() => { setIsAccountModalOpen(false); }} isSubmitting={isAddingAccount} error={actionData?.error} />}

@@ -7,4 +7,5 @@ export default [
     route("api/auth/*", "routes/api.auth.ts"),
     route("api/cloudflare", "routes/api.cloudflare.ts"),
     route("api/logs", "routes/api.logs.ts"),
+    route("verify-email", "routes/verify-email.tsx"),
 ] satisfies RouteConfig;

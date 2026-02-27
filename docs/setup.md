@@ -29,6 +29,12 @@ npx wrangler d1 migrations apply flarefilter-db --local --config apps/dashboard/
 cat <<EOF > apps/dashboard/.dev.vars
 BETTER_AUTH_BASE_URL="http://localhost:5173"
 BETTER_AUTH_SECRET="$(openssl rand -base64 32)"
+
+# Optional: fill in to enable email verification via Gmail.
+# Leave blank → accounts auto-activate (no email needed).
+# Get an App Password: https://myaccount.google.com/apppasswords
+GMAIL_USER=""
+GMAIL_APP_PASSWORD=""
 EOF
 
 # 4. Start Development Server
@@ -37,8 +43,9 @@ pnpm dev
 
 ### 🎯 Next Steps (Local)
 1. Open `http://localhost:5173/auth` to **Sign Up** for your local user.
-2. Create an **Organization** & Connect a Cloudflare account.
-3. **Test the Worker**: While `pnpm dev` is running, press **'t'** in the terminal to force a cron event, or visit `http://localhost:8787/__scheduled`.
+2. **Email verification** is optional locally. Fill `GMAIL_USER` and `GMAIL_APP_PASSWORD` in `.dev.vars` to enable it — otherwise accounts activate instantly.
+3. Connect a Cloudflare account and add your zones.
+4. **Test the Worker**: While `pnpm dev` is running, press **'t'** in the terminal to force a cron event, or visit `http://localhost:8787/__scheduled`.
 
 > ⚠️ **Local cron does not tick automatically.** Unlike production (where Cloudflare fires the cron every minute on its own), the local Miniflare runtime does **not** run the scheduler clock — it just sits idle. You must manually trigger each cron execution using **'t'** or the `/__scheduled` URL.
 
@@ -62,12 +69,18 @@ npx wrangler kv namespace create BLOCKLIST
 # 2. Configuration (Manual Link)
 # Copy IDs from step 1 into:
 # - apps/dashboard/wrangler.jsonc (database_id)
-# - apps/worker/wrangler.toml (database_id & KV id)
+# - apps/worker/wrangler.jsonc (database_id & KV id)
 
 # 3. Deploy
 npx wrangler d1 migrations apply flarefilter-db --remote --config apps/dashboard/wrangler.jsonc
 pnpm --filter @flarefilter/worker deploy
 pnpm --filter @flarefilter/dashboard deploy
+
+# 4. Fill in production secrets
+# Copy the template and fill in your values:
+cp apps/dashboard/.prod.vars.example apps/dashboard/.prod.vars
+# Then edit apps/dashboard/.prod.vars with your real values.
+# `pnpm run deploy` will read from this file and push to Cloudflare automatically.
 ```
 
 ### 🛰️ Next Steps (Production)

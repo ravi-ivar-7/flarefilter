@@ -21,7 +21,6 @@ export const session = sqliteTable("session", {
     ipAddress: text('ipAddress'),
     userAgent: text('userAgent'),
     userId: text('userId').notNull().references(() => user.id),
-    activeOrganizationId: text('activeOrganizationId'),
 });
 
 export const account = sqliteTable("account", {

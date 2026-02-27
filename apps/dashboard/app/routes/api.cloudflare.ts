@@ -15,9 +15,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const sessionData = await auth.api.getSession({ headers: request.headers });
     if (!sessionData?.user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-    // Resolve tenant — user must belong to an active org.
-    const tenantId = sessionData.session.activeOrganizationId;
-    if (!tenantId) return Response.json({ error: "No active organization" }, { status: 403 });
+    // Resolve user ID
+    const userId = sessionData.user.id;
 
     const formData = await request.formData();
     const accountRef = formData.get("accountRef") as string;
@@ -25,10 +24,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     if (!accountRef) return Response.json({ error: "Missing accountRef" }, { status: 400 });
 
-    // Tenant-scoped lookup: ensures the caller can only use accounts that
-    // belong to their own organization. Prevents IDOR.
+    // User-scoped lookup: ensures the caller can only use accounts that
+    // belong to them. Prevents IDOR.
     const [account] = await db.select().from(cloudflareAccounts).where(
-        and(eq(cloudflareAccounts.id, accountRef), eq(cloudflareAccounts.tenantId, tenantId))
+        and(eq(cloudflareAccounts.id, accountRef), eq(cloudflareAccounts.userId, userId))
     );
     if (!account) return Response.json({ error: "Account not found" }, { status: 404 });
 

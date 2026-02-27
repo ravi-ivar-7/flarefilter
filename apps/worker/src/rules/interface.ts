@@ -4,7 +4,7 @@ import { ActionLogger } from '../lib/actions/logger';
 // Standardized Zone object passed from the DB
 export interface ZoneConfig {
     id: string;
-    tenantId: string;
+    userId: string;
     cfAccountRef: string;
     name: string;
     cfZoneId: string;

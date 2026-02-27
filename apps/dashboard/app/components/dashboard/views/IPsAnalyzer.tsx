@@ -8,7 +8,6 @@ import { IpDetails } from "../modals/IpDetails";
 export function IPsAnalyzer({
     zones,
     accounts,
-    orgName,
     dateRange,
     onDateRangeChange,
     limit,
@@ -20,7 +19,6 @@ export function IPsAnalyzer({
 }: {
     zones: any[];
     accounts: any[];
-    orgName: string;
     dateRange: DateRange;
     onDateRangeChange: (v: DateRange) => void;
     limit: number;

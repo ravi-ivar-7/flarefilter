@@ -50,6 +50,20 @@
       "when": 1771977855638,
       "tag": "0006_little_black_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1772190053257,
+      "tag": "0007_lowly_snowbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1772250000000,
+      "tag": "0008_rate_limit",
+      "breakpoints": true
     }
   ]
 }

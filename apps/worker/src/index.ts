@@ -15,7 +15,7 @@ export default {
     // 1. Fetch event (Hono router for explicit API calls from outside the dashboard)
     fetch: app.fetch,
 
-    // 2. Scheduled event (Cron trigger — runs every minute per wrangler.toml)
+    // 2. Scheduled event (Cron trigger — runs every minute per wrangler.jsonc)
     async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
         console.log(`Cron triggered at ${new Date(event.scheduledTime).toISOString()}`);
         ctx.waitUntil(runCronTasks(env));

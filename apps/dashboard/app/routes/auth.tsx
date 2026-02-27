@@ -15,48 +15,105 @@ export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
-    const [orgName, setOrgName] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [isSignUp, setIsSignUp] = useState(searchParams.get("mode") === "register");
+    const [signingOut, setSigningOut] = useState(false);
+
+    const { data: session } = authClient.useSession();
+
+    const handleSignOut = async () => {
+        setSigningOut(true);
+        await authClient.signOut({ fetchOptions: { onSuccess: () => navigate('/auth') } });
+        setSigningOut(false);
+    };
+
+    // Already authenticated — don't show the form
+    if (session?.user) {
+        return (
+            <div className="flex flex-col items-center justify-center bg-slate-50 text-slate-900 font-sans w-full px-4 py-10">
+                <div className="w-full max-w-[400px]">
+                    <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-8 sm:p-10">
+                        <div className="flex flex-col items-center mb-8">
+                            <div className="mb-5">
+                                <Logo variant="icon" size={48} animate={false} />
+                            </div>
+                            <h1 className="text-2xl font-black tracking-tight text-slate-900">
+                                Already signed in
+                            </h1>
+                            <p className="text-sm font-medium text-slate-500 mt-2 text-center text-balance">
+                                You're signed in as <strong className="text-slate-700">{session.user.email}</strong>
+                            </p>
+                        </div>
+                        <div className="flex flex-col gap-3">
+                            <Link
+                                to="/dashboard"
+                                className="w-full bg-slate-900 text-white text-sm font-semibold rounded-xl px-4 py-3 hover:bg-black transition-all duration-200 active:scale-[0.98] shadow-sm text-center"
+                            >
+                                Go to Dashboard
+                            </Link>
+                            <button
+                                onClick={handleSignOut}
+                                disabled={signingOut}
+                                className="w-full bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-xl px-4 py-3 hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 active:scale-[0.98] disabled:opacity-50"
+                            >
+                                {signingOut ? 'Signing out...' : 'Sign Out'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError('');
 
-        const callback = {
-            onSuccess: () => {
-                navigate('/dashboard');
-            },
-            onError: (ctx: any) => {
-                setError(ctx.error.message || 'Authentication failed');
-                setLoading(false);
-            }
-        };
-
         if (isSignUp) {
-            await authClient.signUp.email({ email, password, name }, {
-                onSuccess: async () => {
-                    if (orgName) {
-                        try {
-                            const newOrg = await authClient.organization.create({
-                                name: orgName,
-                                slug: orgName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || crypto.randomUUID()
-                            });
-                            if (newOrg.data?.id) {
-                                await authClient.organization.setActive({ organizationId: newOrg.data.id });
-                            }
-                        } catch (e) {
-                            console.error("Failed to create org", e);
+            await authClient.signUp.email(
+                { email, password, name },
+                {
+                    onSuccess: (ctx: any) => {
+                        // If email verification is enabled, the user won't be verified yet.
+                        // Redirect them to the verify-email page.
+                        // If Gmail is not configured, Better Auth auto-marks emailVerified=true
+                        // so we go straight to the dashboard.
+                        if (ctx.data?.user?.emailVerified === false) {
+                            navigate(`/verify-email?email=${encodeURIComponent(email)}`);
+                        } else {
+                            navigate('/dashboard');
                         }
-                    }
-                    callback.onSuccess();
-                },
-                onError: callback.onError
-            });
+                    },
+                    onError: (ctx: any) => {
+                        if (ctx.error.status === 429) {
+                            setError('Too many sign-up attempts. Please wait a minute and try again.');
+                        } else {
+                            setError(ctx.error.message || 'Sign up failed. Please try again.');
+                        }
+                        setLoading(false);
+                    },
+                }
+            );
         } else {
-            await authClient.signIn.email({ email, password }, callback);
+            await authClient.signIn.email(
+                { email, password },
+                {
+                    onSuccess: () => navigate('/dashboard'),
+                    onError: (ctx: any) => {
+                        if (ctx.error.status === 403) {
+                            // Email not verified — redirect to verify-email page
+                            navigate(`/verify-email?email=${encodeURIComponent(email)}`);
+                        } else if (ctx.error.status === 429) {
+                            setError('Too many attempts. Please wait a minute and try again.');
+                        } else {
+                            setError(ctx.error.message || 'Authentication failed');
+                        }
+                        setLoading(false);
+                    },
+                }
+            );
         }
     };
 
@@ -75,7 +132,7 @@ export default function LoginPage() {
                             <Logo variant="icon" size={48} animate={false} />
                         </div>
                         <h1 className="text-2xl font-black tracking-tight text-slate-900">
-                            {isSignUp ? 'Create Organization' : 'Welcome back'}
+                            {isSignUp ? 'Create Account' : 'Welcome back'}
                         </h1>
                         <p className="text-sm font-medium text-slate-500 mt-2 text-center text-balance">
                             {isSignUp ? 'Set up your admin account to get started.' : 'Sign in to manage your Edge defenses.'}
@@ -98,17 +155,6 @@ export default function LoginPage() {
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
                                         placeholder="Admin User"
-                                        required
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 focus:bg-white transition-all duration-200"
-                                    />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Organization Name</label>
-                                    <input
-                                        type="text"
-                                        value={orgName}
-                                        onChange={(e) => setOrgName(e.target.value)}
-                                        placeholder="Acme Corp"
                                         required
                                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 focus:bg-white transition-all duration-200"
                                     />
@@ -153,7 +199,7 @@ export default function LoginPage() {
                                     <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                     Authenticating...
                                 </>
-                            ) : (isSignUp ? "Create Organization" : "Sign In")}
+                            ) : (isSignUp ? "Create Account" : "Sign In")}
                         </button>
                     </form>
                 </div>

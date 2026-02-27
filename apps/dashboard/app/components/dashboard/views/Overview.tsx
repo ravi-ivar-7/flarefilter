@@ -5,7 +5,6 @@ import { DateRangePicker, type DateRange } from "~/components/shared/DateRangePi
 import { RecentActions } from "../widgets/RecentActions";
 
 interface OverviewProps {
-    orgName: string;
     dateRange: any;
     onDateRangeChange: (v: any) => void;
     isLoading?: boolean;
@@ -24,7 +23,6 @@ interface OverviewProps {
 }
 
 export function Overview({
-    orgName,
     dateRange,
     onDateRangeChange,
     isLoading,
