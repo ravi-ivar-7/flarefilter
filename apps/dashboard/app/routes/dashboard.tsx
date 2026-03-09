@@ -1,4 +1,3 @@
-import { drizzle } from "drizzle-orm/d1";
 import { cloudflareAccounts, zoneConfigs, addIpToListRules, actionLogs } from "@flarefilter/db/src/schema/zones";
 import { desc, eq, sql, and, gte, lte } from "drizzle-orm";
 import { useNavigation, useActionData, useRevalidator, redirect } from "react-router";
@@ -9,7 +8,7 @@ import { AddAccount } from "~/components/dashboard/modals/AddAccount";
 import { AddZone } from "~/components/dashboard/modals/AddZone";
 import { RuleSelector } from "~/components/dashboard/modals/rules/RuleSelector";
 import { RULE_REGISTRY, type RuleType } from "~/lib/rules/registry";
-import { IPsAnalyzer } from "~/components/dashboard/views/IPsAnalyzer";
+import { TopStatsExplorer } from "~/components/dashboard/views/TopStatsExplorer";
 import { Overview } from "~/components/dashboard/views/Overview";
 import { ActionLogs } from "~/components/dashboard/views/ActionLogs";
 import { Lists } from "~/components/dashboard/views/Lists";
@@ -17,6 +16,7 @@ import { Profile } from "~/components/dashboard/views/Profile";
 import { type DateRange } from "~/components/shared/DateRangePicker";
 import { useSearchParams } from "react-router";
 import type { Route } from "./+types/dashboard";
+import { getDb } from "~/lib/db";
 
 export const meta: Route.MetaFunction = () => [
   { title: "Dashboard - FlareFilter" },
@@ -27,7 +27,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   const env = context.cloudflare.env;
   if (!env.DB) throw new Error("D1 binding 'DB' not configured.");
 
-  const db = drizzle(env.DB, { schema: { cloudflareAccounts, zoneConfigs, addIpToListRules, actionLogs } });
+  const db = getDb(env);
 
   const auth = getAuth(env);
   const sessionData = await auth.api.getSession({ headers: request.headers });
@@ -54,7 +54,7 @@ export async function action({ request, context }: Route.ActionArgs) {
         const verifyRes = await fetch("https://api.cloudflare.com/client/v4/user/tokens/verify", {
           headers: { Authorization: `Bearer ${cfApiToken}` },
         });
-        const verifyJson: any = await verifyRes.json();
+        const verifyJson = await verifyRes.json() as { success: boolean };
         if (!verifyRes.ok || !verifyJson.success) {
           return { error: "Invalid API Token. Cloudflare rejected it — check the token is active and not expired." };
         }
@@ -213,7 +213,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 
   const userId = sessionData.user.id;
 
-  const db = drizzle(env.DB, { schema: { cloudflareAccounts, zoneConfigs, addIpToListRules, actionLogs } });
+  const db = getDb(env);
 
   const tab = params.tab || "overview";
 
@@ -256,14 +256,14 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 
   const rules = ruleResults.flatMap((res, i) => {
     const type = activeRuleConfigs[i].type;
-    return (res as any[]).map(r => ({ ...r, type }));
+    return (res as Record<string, unknown>[]).map(r => ({ ...r, type }));
   });
 
   return { user: sessionData.user, accounts, zones, rules, recentActions, totalBlocks, currentTab: tab };
 }
 
 export default function DashboardPage({ loaderData, params }: Route.ComponentProps) {
-  const { user, accounts, zones, rules, recentActions, totalBlocks } = loaderData as any;
+  const { user, accounts, zones, rules, recentActions, totalBlocks } = loaderData;
   const currentTab = params.tab || "overview";
   const actionData = useActionData() as { error?: string } | null;
   const navigation = useNavigation();
@@ -327,14 +327,14 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
   });
 
 
-  const [analyzerZoneId, _setAnalyzerZoneId] = useState<string>(() => {
+  const [activeZoneId, _setActiveZoneId] = useState<string>(() => {
     // 1. URL
     const qZone = searchParams.get("zoneId");
     if (qZone) return qZone;
 
     // 2. LocalStorage
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("ff_ips_analyzer_zone");
+      const saved = localStorage.getItem("ff_top_stats_zone");
       if (saved) return saved;
     }
     return "";
@@ -373,7 +373,7 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
     if (typeof window !== "undefined") {
       localStorage.setItem("flarefilter_daterange", JSON.stringify(newRange));
     }
-    syncToUrl(newRange, limit, analyzerZoneId);
+    syncToUrl(newRange, limit, activeZoneId);
   };
 
   const setLimit = (newLimit: number) => {
@@ -381,13 +381,13 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
     if (typeof window !== "undefined") {
       localStorage.setItem("flarefilter_limit", String(newLimit));
     }
-    syncToUrl(dateRange, newLimit, analyzerZoneId);
+    syncToUrl(dateRange, newLimit, activeZoneId);
   };
 
-  const setAnalyzerZoneId = (zId: string) => {
-    _setAnalyzerZoneId(zId);
+  const setActiveZoneId = (zId: string) => {
+    _setActiveZoneId(zId);
     if (typeof window !== "undefined") {
-      localStorage.setItem("ff_ips_analyzer_zone", zId);
+      localStorage.setItem("ff_top_stats_zone", zId);
     }
     syncToUrl(dateRange, limit, zId);
   };
@@ -400,12 +400,12 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
 
     if (
       !searchParams.has("type") ||
-      urlZone !== analyzerZoneId ||
+      urlZone !== activeZoneId ||
       urlLimit !== String(limit)
     ) {
-      syncToUrl(dateRange, limit, analyzerZoneId);
+      syncToUrl(dateRange, limit, activeZoneId);
     }
-  }, [searchParams, activeTab, dateRange, limit, analyzerZoneId]);
+  }, [searchParams, activeTab, dateRange, limit, activeZoneId]);
 
   useEffect(() => {
     const type = searchParams.get("type") as "relative" | "absolute" | "all" | null;
@@ -427,7 +427,7 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
 
     const qZone = searchParams.get("zoneId");
     if (qZone !== null) {
-      _setAnalyzerZoneId(qZone);
+      _setActiveZoneId(qZone);
     }
 
   }, [searchParams]);
@@ -515,15 +515,15 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
       )}
 
       {activeTab === "ips" && (
-        <IPsAnalyzer
+        <TopStatsExplorer
           zones={zones}
           accounts={accounts}
           dateRange={dateRange}
           onDateRangeChange={setDateRange}
           limit={limit}
           onLimitChange={setLimit}
-          activeZoneId={analyzerZoneId}
-          onActiveZoneChange={setAnalyzerZoneId}
+          activeZoneId={activeZoneId}
+          onActiveZoneChange={setActiveZoneId}
           isLoading={navigation.state !== "idle" || revalidator.state !== "idle"}
           onPauseChange={setIsPaused}
         />
@@ -536,8 +536,8 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
           onDateRangeChange={setDateRange}
           limit={limit}
           onLimitChange={setLimit}
-          activeZoneId={analyzerZoneId}
-          onActiveZoneChange={setAnalyzerZoneId}
+          activeZoneId={activeZoneId}
+          onActiveZoneChange={setActiveZoneId}
           onRefresh={() => revalidator.revalidate()}
           isLoading={navigation.state !== "idle" || revalidator.state !== "idle"}
           recentActions={recentActions}

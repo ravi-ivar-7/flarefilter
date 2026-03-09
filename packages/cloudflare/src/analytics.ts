@@ -8,11 +8,18 @@ export interface TopStatsParams {
   latencyOffsetSeconds?: number;
 }
 
+/** A single row returned by the Cloudflare Analytics top-stats query.
+ *  Always contains `count` plus one key per requested dimension. */
+export interface TopStatRow {
+  count: number;
+  [dimension: string]: string | number;
+}
+
 export class AnalyticsApi extends CloudflareApiBase {
   /**
    * Queries top requested adaptive groups for a single zone.
    */
-  async getTopStats(params: TopStatsParams): Promise<any[]> {
+  async getTopStats(params: TopStatsParams): Promise<TopStatRow[]> {
     const result = await this.getTopStatsBatch([params]);
     return result.get(params.zoneTag) ?? [];
   }
@@ -28,7 +35,7 @@ export class AnalyticsApi extends CloudflareApiBase {
    */
   async getTopStatsBatch(
     paramsList: TopStatsParams[]
-  ): Promise<Map<string, any[]>> {
+  ): Promise<Map<string, TopStatRow[]>> {
     if (paramsList.length === 0) return new Map();
 
     // If only one zone, no aliasing or extra variables needed — fast path.
@@ -125,7 +132,7 @@ export class AnalyticsApi extends CloudflareApiBase {
   /**
    * Internal single-zone query — used by the fast path in getTopStatsBatch.
    */
-  private async _singleZoneQuery(params: TopStatsParams): Promise<any[]> {
+  private async _singleZoneQuery(params: TopStatsParams): Promise<TopStatRow[]> {
     const LATENCY = params.latencyOffsetSeconds ?? 60;
     const end = Date.now() - LATENCY * 1000;
 

@@ -1,21 +1,59 @@
-import { type ActionFunctionArgs } from "react-router";
-import { drizzle } from "drizzle-orm/d1";
+import { type ActionFunctionArgs, type LoaderFunctionArgs } from "react-router";
 import { cloudflareAccounts } from "@flarefilter/db/src/schema/zones";
 import { eq, and } from "drizzle-orm";
 import { CloudflareClient } from "@flarefilter/cloudflare";
 import { getAuth } from "~/lib/auth";
+import { getDb } from "~/lib/db";
 
-export async function action({ request, context }: ActionFunctionArgs) {
+export async function loader({ request, context }: LoaderFunctionArgs) {
+    const url = new URL(request.url);
+    const type = url.searchParams.get("type");
+    const accountRef = url.searchParams.get("accountRef");
+
+    if (!type || !accountRef) {
+        return Response.json({ error: "Missing type or accountRef" }, { status: 400 });
+    }
+
     const env = context.cloudflare.env;
     if (!env.DB) return Response.json({ error: "DB not found" }, { status: 500 });
-    const db = drizzle(env.DB);
+    const db = getDb(env as { DB: D1Database });
 
-    // ── Auth guard ────────────────────────────────────────────────────────────
+    const auth = getAuth(env);
+    const sessionData = await auth.api.getSession({ headers: request.headers });
+    if (!sessionData?.user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+    const userId = sessionData.user.id;
+
+    const [account] = await db.select().from(cloudflareAccounts).where(
+        and(eq(cloudflareAccounts.id, accountRef), eq(cloudflareAccounts.userId, userId))
+    );
+    if (!account) return Response.json({ error: "Account not found" }, { status: 404 });
+
+    const cf = new CloudflareClient(account.cfAccountId, account.cfApiToken);
+
+    try {
+        if (type === "zones") {
+            return Response.json(await cf.zones.getZones());
+        }
+        if (type === "lists") {
+            return Response.json(await cf.lists.getLists());
+        }
+        return Response.json({ error: "Invalid type for GET. Supported: zones, lists" }, { status: 400 });
+    } catch (err: any) {
+        return Response.json({ error: err.message || "Failed to fetch" }, { status: 500 });
+    }
+}
+
+export async function action({ request, context }: ActionFunctionArgs) {
+    if (request.method !== "POST") return Response.json({ error: "Method Not Allowed" }, { status: 405 });
+
+    const env = context.cloudflare.env;
+    if (!env.DB) return Response.json({ error: "DB not found" }, { status: 500 });
+    const db = getDb(env);
+
     const auth = getAuth(env);
     const sessionData = await auth.api.getSession({ headers: request.headers });
     if (!sessionData?.user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-    // Resolve user ID
     const userId = sessionData.user.id;
 
     const formData = await request.formData();
@@ -50,7 +88,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
             if (!listId || !itemsJson) return Response.json({ error: "Missing listId or items" }, { status: 400 });
 
-            let items: any[];
+            let items: { ip: string; comment?: string }[];
             try {
                 items = JSON.parse(itemsJson);
             } catch {
@@ -84,9 +122,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
             }
         }
 
-        if (type === "top-ips") {
+        if (type === "top-stats") {
             const zoneTag = formData.get("zoneTag") as string;
-            const limit = parseInt(formData.get("limit") as string) || 10;
+            const limit = Math.min(parseInt(formData.get("limit") as string) || 10, 500);
             const windowSecondsVal = formData.get("windowSeconds");
             const windowSeconds = windowSecondsVal ? parseInt(windowSecondsVal as string) : undefined;
             const dimensionsParam = formData.get("dimensions") as string || "clientIP";

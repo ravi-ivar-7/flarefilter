@@ -5,7 +5,7 @@ import { DateRangePicker, type DateRange } from "~/components/shared/DateRangePi
 import { PushIpToList } from "../modals/PushIpToList";
 import { IpDetails } from "../modals/IpDetails";
 
-export function IPsAnalyzer({
+export function TopStatsExplorer({
     zones,
     accounts,
     dateRange,
@@ -33,7 +33,7 @@ export function IPsAnalyzer({
     const [dimensions, setDimensions] = useState<string[]>(() => {
         if (typeof window === "undefined") return ["clientIP", "clientCountryName", "clientRequestPath"];
         try {
-            const saved = localStorage.getItem("ff_ips_analyzer_dimensions");
+            const saved = localStorage.getItem("ff_top_stats_dimensions");
             if (saved) return JSON.parse(saved);
         } catch (e) { }
         return ["clientIP", "clientCountryName", "clientRequestPath"];
@@ -67,7 +67,7 @@ export function IPsAnalyzer({
 
 
     useEffect(() => {
-        localStorage.setItem("ff_ips_analyzer_dimensions", JSON.stringify(dimensions));
+        localStorage.setItem("ff_top_stats_dimensions", JSON.stringify(dimensions));
     }, [dimensions]);
 
     const windowSeconds = useMemo(() => {
@@ -80,10 +80,12 @@ export function IPsAnalyzer({
             if (unit === "h") return num * 3600;
             if (unit === "d") return num * 86400;
             return 1800;
-        } else if (dateRange.start && dateRange.end) {
-            return Math.floor((dateRange.end.getTime() - dateRange.start.getTime()) / 1000);
         }
-        return 3600;
+        // For absolute ranges, do NOT compute a windowSeconds from the diff.
+        // The analytics API already uses datetime_geq/datetime_leq from the
+        // absolute start/end — passing windowSeconds too would double-apply
+        // the time filter and return wrong (too-narrow) results.
+        return null;
     }, [dateRange]);
 
     const handleFetch = () => {
@@ -94,7 +96,7 @@ export function IPsAnalyzer({
         const formData = new FormData();
         formData.append("accountRef", zone.cfAccountRef);
         formData.append("zoneTag", zone.cfZoneId);
-        formData.append("type", "top-ips");
+        formData.append("type", "top-stats");
         formData.append("dimensions", dimensions.length > 0 ? dimensions.join(",") : "clientIP");
         if (windowSeconds) {
             formData.append("windowSeconds", windowSeconds.toString());
@@ -139,7 +141,7 @@ export function IPsAnalyzer({
             if (err.details && err.details[0]?.extensions?.code === "authz") {
                 setErrorMsg(`Access Denied: Your Cloudflare plan does not include access to this specific dimension.`);
             } else {
-                setErrorMsg(err.error || "Failed to fetch top IPs data.");
+                setErrorMsg(err.error || "Failed to fetch top stats data.");
             }
         } else if (Array.isArray(fetcher.data)) {
             setErrorMsg(null);

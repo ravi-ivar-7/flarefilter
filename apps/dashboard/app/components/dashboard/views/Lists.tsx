@@ -276,7 +276,7 @@ export function Lists({
 
                 <div className="w-px h-6 bg-slate-200 shrink-0 hidden sm:block mx-1" />
 
-                {/* Selection bar — matches IPsAnalyzer */}
+                {/* Selection bar — matches TopStatsExplorer */}
                 {selectedItemIds.size > 0 && (
                     <div className="flex flex-wrap items-center gap-2 bg-indigo-50/50 border border-indigo-100/50 py-1 px-3 rounded-md animate-in fade-in slide-in-from-top-2 duration-300">
                         {/* Count */}

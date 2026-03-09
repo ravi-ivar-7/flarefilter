@@ -1,5 +1,6 @@
 import { RuleHandler, RuleContext } from '../interface';
 import { log } from '../../lib/log';
+import type { ListItem } from '@flarefilter/cloudflare';
 
 export class AddIpToListRule implements RuleHandler {
     /**
@@ -36,11 +37,16 @@ export class AddIpToListRule implements RuleHandler {
             log(`  Using ${flaggedIPs.length} pre-fetched flagged IP(s) for rule ${rule.id} (filtered from ${prefetchedIps.length}).`);
         } else {
             try {
-                flaggedIPs = await cf.getAbusiveIps(
-                    zone.cfZoneId,
-                    rateLimitThreshold,
-                    ruleWindowSeconds
-                );
+                const results = await cf.analytics.getTopStats({
+                    zoneTag: zone.cfZoneId,
+                    dimensions: ['clientIP'],
+                    windowSeconds: ruleWindowSeconds,
+                    limit: 10000,
+                    latencyOffsetSeconds: 60,
+                });
+                flaggedIPs = results
+                    .filter(r => r.count > rateLimitThreshold)
+                    .map(r => ({ ip: String(r['clientIP']), count: r.count as number }));
             } catch (err: any) {
                 console.error(`  Failed to query abusive IPs for rule ${rule.id} on zone ${zone.name}:`, err.message);
                 return;
@@ -59,9 +65,9 @@ export class AddIpToListRule implements RuleHandler {
         //      - Fast path: single batch POST (all new).
         //      - Slow path: sequential per-item POSTs in chunks,
         //                   so new items are never silently lost with the dupes.
-        let added: any[] = [];
-        let alreadyInList: any[] = [];
-        let failed: any[] = [];
+        let added: ListItem[] = [];
+        let alreadyInList: ListItem[] = [];
+        let failed: ListItem[] = [];
         let operationIds: string[] = [];
 
         try {

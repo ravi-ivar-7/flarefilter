@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { runCronTasks } from './cron';
 
-// Shared Env bindings — only D1 is needed; BLOCKLIST KV removed (unused).
+// Shared Env bindings
 export interface Env {
     DB: D1Database;
     DEBUG: string;

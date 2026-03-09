@@ -5,7 +5,7 @@ import { RULES_MANIFEST } from '@flarefilter/rules';
 import { Env } from './index';
 import { RuleEngine } from './engine';
 import { ActionLogger } from './lib/actions/logger';
-import { CloudflareClient } from './lib/cloudflare/client';
+import { CloudflareClient } from '@flarefilter/cloudflare';
 import { initLogger, log } from './lib/log';
 
 // ─── Main cron handler ───────────────────────────────────────────────────────
@@ -82,7 +82,7 @@ export async function runCronTasks(env: Env): Promise<void> {
     }
 
     // For each account group, build a CloudflareClient and call
-    // getAbusiveIpsBatch() with ALL zones in that group.
+    // getTopIpStatsBatch() with ALL zones in that group.
     // We need per-rule thresholds — so we pick the most common windowSeconds
     // from the rules. In practice, most zones share the same window.
     const prefetchedIpsByZone = new Map<string, { ip: string; count: number }[]>();
@@ -134,11 +134,26 @@ export async function runCronTasks(env: Env): Promise<void> {
             if (analyticsParams.length === 0) return;
 
             log(`  Batched analytics for ${analyticsParams.length} zone(s) on account ${account.label}`);
-            const batchedIps = await cf.getAbusiveIpsBatch(analyticsParams);
 
-            // Merge results into the global map.
-            for (const [zoneId, ips] of batchedIps) {
-                prefetchedIpsByZone.set(zoneId, ips);
+            const batchResults = await cf.analytics.getTopStatsBatch(
+                analyticsParams.map(p => ({
+                    zoneTag: p.cfZoneId,
+                    dimensions: ['clientIP'],
+                    windowSeconds: p.windowSeconds,
+                    limit: 10000,
+                    latencyOffsetSeconds: 60,
+                }))
+            );
+
+            // Apply per-zone thresholds and reshape to { ip, count }[].
+            for (const p of analyticsParams) {
+                const raw = batchResults.get(p.cfZoneId) ?? [];
+                prefetchedIpsByZone.set(
+                    p.cfZoneId,
+                    raw
+                        .filter(r => r.count > p.threshold)
+                        .map(r => ({ ip: String(r['clientIP']), count: r.count as number }))
+                );
             }
         })
     );

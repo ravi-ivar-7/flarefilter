@@ -1,5 +1,5 @@
 import { RuleHandlers } from './rules/index';
-import { CloudflareClient } from './lib/cloudflare/client';
+import { CloudflareClient } from '@flarefilter/cloudflare';
 import { ActionLogger } from './lib/actions/logger';
 import { log } from './lib/log';
 

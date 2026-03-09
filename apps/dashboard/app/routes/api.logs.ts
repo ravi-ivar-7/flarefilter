@@ -1,18 +1,20 @@
-import { drizzle } from "drizzle-orm/d1";
 import { actionLogs, zoneConfigs } from "@flarefilter/db/src/schema/zones";
 import { desc, eq, inArray, and, gte } from "drizzle-orm";
 import type { ActionFunctionArgs } from "react-router";
 import { getAuth } from "~/lib/auth";
+import { getDb } from "~/lib/db";
 
 export async function action({ request, context }: ActionFunctionArgs) {
+    if (request.method !== "POST") return Response.json({ error: "Method Not Allowed" }, { status: 405 });
+
     const env = context.cloudflare.env;
     if (!env.DB) return Response.json({ error: "DB not found" }, { status: 500 });
-    const db = drizzle(env.DB);
+    const db = getDb(env);
 
     const auth = getAuth(env);
     const sessionData = await auth.api.getSession({ headers: request.headers });
     if (!sessionData?.user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-    let userId = sessionData.user.id;
+    const userId = sessionData.user.id;
 
     const formData = await request.formData();
     const zoneId = formData.get("zoneId") as string;

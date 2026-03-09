@@ -103,16 +103,17 @@ export class ListsApi extends CloudflareApiBase {
         }
 
         // ── Slow path: per-item POSTs ─────────────────────────────────────────
-        // Process in sequential chunks of CHUNK_SIZE to respect CF rate limits
-        // (1200 req/5min). Items WITHIN each chunk run concurrently.
-        const CHUNK_SIZE = 20;
+        // CF rate limit: 1200 req / 5 min = 4 req/s sustained.
+        // 20 concurrent items per sequential chunk stays well within that budget
+        // while keeping total time low for typical batch sizes.
+        const MAX_CONCURRENT_LIST_ADDS = 20;
         const added: any[] = [];
         const alreadyInList: any[] = [];
         const failed: any[] = [];
         const operationIds: string[] = [];
 
-        for (let i = 0; i < items.length; i += CHUNK_SIZE) {
-            const chunk = items.slice(i, i + CHUNK_SIZE);
+        for (let i = 0; i < items.length; i += MAX_CONCURRENT_LIST_ADDS) {
+            const chunk = items.slice(i, i + MAX_CONCURRENT_LIST_ADDS);
 
             const chunkResults = await Promise.allSettled(
                 chunk.map(item => this.addItems(cfListId, [item]).then(opId => ({ item, opId })))

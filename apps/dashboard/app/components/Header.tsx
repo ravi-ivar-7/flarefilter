@@ -29,7 +29,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
             pageTitle = "Overview";
             pageSubtext = "Monitor and manage your edge defenses in real-time.";
         } else if (activeTab === "ips") {
-            pageTitle = "IPs Analyzer";
+            pageTitle = "Top Stats";
             pageSubtext = "Analyze traffic patterns by IP, country, ASN and more. Take action on selected results.";
         } else if (activeTab === "logs") {
             pageTitle = "Action Logs";
