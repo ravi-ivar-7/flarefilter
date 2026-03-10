@@ -25,7 +25,7 @@ export function Lists({
 
     const [selectedAccountRef, setSelectedAccountRef] = useState<string>(() => {
         if (typeof window !== "undefined") {
-            const saved = localStorage.getItem("flarefilter_lists_account_id");
+            const saved = localStorage.getItem("flarestack_lists_account_id");
             if (saved) return saved;
         }
         return accounts[0]?.id || "";
@@ -33,7 +33,7 @@ export function Lists({
     const [lists, setLists] = useState<any[]>([]);
     const [selectedListId, setSelectedListId] = useState<string | null>(() => {
         if (typeof window !== "undefined") {
-            return localStorage.getItem("flarefilter_lists_selected_id");
+            return localStorage.getItem("flarestack_lists_selected_id");
         }
         return null;
     });
@@ -61,9 +61,9 @@ export function Lists({
     // Persist selections
     useEffect(() => {
         if (typeof window !== "undefined") {
-            localStorage.setItem("flarefilter_lists_account_id", selectedAccountRef);
+            localStorage.setItem("flarestack_lists_account_id", selectedAccountRef);
             if (selectedListId) {
-                localStorage.setItem("flarefilter_lists_selected_id", selectedListId);
+                localStorage.setItem("flarestack_lists_selected_id", selectedListId);
             }
         }
     }, [selectedAccountRef, selectedListId]);

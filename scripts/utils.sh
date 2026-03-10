@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ============================================
-# FlareFilter Script Utilities (Colors & Icons)
+# FlareStack Script Utilities (Colors & Icons)
 # Sourced by setup-local.sh, nuke.sh, etc.
 # ============================================
 

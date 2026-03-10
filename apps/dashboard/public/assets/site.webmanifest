@@ -1,6 +1,6 @@
 {
-    "name": "FlareFilter",
-    "short_name": "FlareFilter",
+    "name": "FlareStack",
+    "short_name": "FlareStack",
     "description": "Automated Cloudflare IP protection - detect and block abusive IPs in real-time.",
     "start_url": "/dashboard",
     "display": "standalone",

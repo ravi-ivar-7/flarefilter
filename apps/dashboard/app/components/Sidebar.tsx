@@ -50,7 +50,7 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                     <Logo variant="icon" size={32} animate={false} className="flex-shrink-0" />
                     {!isCollapsed && (
                         <span className="text-lg font-black truncate tracking-tight text-slate-900 uppercase">
-                            FlareFilter
+                            FlareStack
                         </span>
                     )}
                 </div>

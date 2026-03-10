@@ -4,8 +4,8 @@ import { authClient } from '~/lib/auth-client';
 import { Logo } from '~/components/Logo';
 
 export const meta = () => [
-    { title: "Verify Your Email - FlareFilter" },
-    { name: "description", content: "Verify your email address to activate your FlareFilter account." },
+    { title: "Verify Your Email - FlareStack" },
+    { name: "description", content: "Verify your email address to activate your FlareStack account." },
 ];
 
 export default function VerifyEmailPage() {

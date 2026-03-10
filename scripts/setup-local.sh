@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================
-# FlareFilter — Local Setup Script
+# FlareStack — Local Setup Script
 # ============================================
 #
 # Usage: pnpm run setup
@@ -17,7 +17,7 @@ set -o pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/utils.sh"
 
-log_header "FlareFilter  Local Setup"
+log_header "FlareStack  Local Setup"
 
 # ── 1. Install Dependencies ─────────────────
 log_step "${ICON_PACKAGE} Installing dependencies"
@@ -28,8 +28,8 @@ echo ""
 
 # ── 2. Database ─────────────────────────────
 log_step "${ICON_DB} Generating DB schema & applying local migrations"
-pnpm --filter @flarefilter/db generate
-npx wrangler d1 migrations apply flarefilter-db \
+pnpm --filter @flarestack/db generate
+npx wrangler d1 migrations apply flarestack-db \
   --local \
   --config apps/dashboard/wrangler.jsonc \
   --persist-to .wrangler/state

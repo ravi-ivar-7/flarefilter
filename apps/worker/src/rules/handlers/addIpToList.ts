@@ -1,6 +1,6 @@
 import { RuleHandler, RuleContext } from '../interface';
 import { log } from '../../lib/log';
-import type { ListItemInput } from '@flarefilter/cloudflare';
+import type { ListItemInput } from '@flarestack/cloudflare';
 
 export class AddIpToListRule implements RuleHandler {
     /**
@@ -96,7 +96,7 @@ export class AddIpToListRule implements RuleHandler {
         log(`  ${newItems.length} new IP(s) to add. Submitting batch to CF list…`);
 
         // ── 3. Batch POST only the new items (guaranteed no duplicates) ────────
-        const comment = `FlareFilter auto-added ${new Date().toISOString()}`;
+        const comment = `FlareStack auto-added ${new Date().toISOString()}`;
         const payload: ListItemInput[] = newItems.map(({ ip }) => ({ ip, comment }));
 
         let operationId: string | null = null;

@@ -1,6 +1,6 @@
 {
     "$schema": "node_modules/wrangler/config-schema.json",
-    "name": "flarefilter-worker",
+    "name": "flarestack-worker",
     "main": "src/index.ts",
     "compatibility_date": "2026-02-24",
     // The Worker fires every minute. The engine decides per-rule whether it's
@@ -13,7 +13,7 @@
     "d1_databases": [
         {
             "binding": "DB",
-            "database_name": "flarefilter-db",
+            "database_name": "flarestack-db",
             "database_id": "08d3a032-70b5-4541-93f3-2dac72079d3b",
             "migrations_dir": "../../packages/db/migrations"
         }

@@ -5,8 +5,8 @@ import type { Route } from './+types/auth';
 import { Logo } from '~/components/Logo';
 
 export const meta: Route.MetaFunction = () => [
-    { title: "Sign In - FlareFilter" },
-    { name: "description", content: "Sign in to your FlareFilter dashboard to manage Cloudflare zones, configure blocking rules, and monitor IP activity." },
+    { title: "Sign In - FlareStack" },
+    { name: "description", content: "Sign in to your FlareStack dashboard to manage Cloudflare zones, configure blocking rules, and monitor IP activity." },
 ];
 
 export default function LoginPage() {

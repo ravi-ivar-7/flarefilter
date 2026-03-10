@@ -1,4 +1,4 @@
-import { addIpToListRules } from "@flarefilter/db/src/schema/zones";
+import { addIpToListRules } from "@flarestack/db/src/schema/zones";
 
 export type RuleType = "add_ip_to_list" | "js_challenge" | "block_country";
 

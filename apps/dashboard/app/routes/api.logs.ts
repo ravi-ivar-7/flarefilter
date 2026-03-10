@@ -1,4 +1,4 @@
-import { actionLogs, zoneConfigs } from "@flarefilter/db/src/schema/zones";
+import { actionLogs, zoneConfigs } from "@flarestack/db/src/schema/zones";
 import { desc, eq, inArray, and, gte } from "drizzle-orm";
 import type { ActionFunctionArgs } from "react-router";
 import { getAuth } from "~/lib/auth";

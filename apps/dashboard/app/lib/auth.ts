@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { drizzle } from "drizzle-orm/d1";
-import * as schema from "@flarefilter/db/src/schema/index";
+import * as schema from "@flarestack/db/src/schema/index";
 import { sendVerificationEmail } from "./email";
 
 /** Minimum env bindings required to initialise Better Auth. */

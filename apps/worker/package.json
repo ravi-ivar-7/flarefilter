@@ -1,5 +1,5 @@
 {
-    "name": "@flarefilter/worker",
+    "name": "@flarestack/worker",
     "version": "1.0.0",
     "private": true,
     "main": "src/index.ts",
@@ -9,9 +9,9 @@
         "typecheck": "tsc --noEmit"
     },
     "dependencies": {
-        "@flarefilter/cloudflare": "workspace:*",
-        "@flarefilter/db": "workspace:*",
-        "@flarefilter/rules": "workspace:*",
+        "@flarestack/cloudflare": "workspace:*",
+        "@flarestack/db": "workspace:*",
+        "@flarestack/rules": "workspace:*",
         "cron-parser": "^5.5.0",
         "drizzle-orm": "^0.39.3",
         "hono": "^4.0.0"

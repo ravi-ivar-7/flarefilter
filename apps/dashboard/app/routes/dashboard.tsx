@@ -1,5 +1,5 @@
-import { cloudflareAccounts, zoneConfigs, addIpToListRules, actionLogs } from "@flarefilter/db/src/schema/zones";
-import { entityCache } from "@flarefilter/db/src/schema/cache";
+import { cloudflareAccounts, zoneConfigs, addIpToListRules, actionLogs } from "@flarestack/db/src/schema/zones";
+import { entityCache } from "@flarestack/db/src/schema/cache";
 import { desc, eq, sql, and, gte, lte, inArray } from "drizzle-orm";
 import { useNavigation, useActionData, useRevalidator, redirect } from "react-router";
 import { getAuth } from "~/lib/auth";
@@ -20,7 +20,7 @@ import type { Route } from "./+types/dashboard";
 import { getDb } from "~/lib/db";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "Dashboard - FlareFilter" },
+  { title: "Dashboard - FlareStack" },
   { name: "description", content: "Monitor your Cloudflare zones, manage IP blocking rules, and review recent threat activity - all in one place." },
 ];
 
@@ -337,7 +337,7 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
 
     // 2. Try localStorage
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("flarefilter_daterange");
+      const saved = localStorage.getItem("flarestack_daterange");
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
@@ -359,7 +359,7 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
 
     // 2. LocalStorage
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("flarefilter_limit");
+      const saved = localStorage.getItem("flarestack_limit");
       if (saved) return parseInt(saved);
     }
 
@@ -411,7 +411,7 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
   const setDateRange = (newRange: DateRange) => {
     _setDateRange(newRange);
     if (typeof window !== "undefined") {
-      localStorage.setItem("flarefilter_daterange", JSON.stringify(newRange));
+      localStorage.setItem("flarestack_daterange", JSON.stringify(newRange));
     }
     syncToUrl(newRange, limit, activeZoneId);
   };
@@ -419,7 +419,7 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
   const setLimit = (newLimit: number) => {
     _setLimit(newLimit);
     if (typeof window !== "undefined") {
-      localStorage.setItem("flarefilter_limit", String(newLimit));
+      localStorage.setItem("flarestack_limit", String(newLimit));
     }
     syncToUrl(dateRange, newLimit, activeZoneId);
   };
@@ -474,7 +474,7 @@ export default function DashboardPage({ loaderData, params }: Route.ComponentPro
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      localStorage.setItem("flarefilter_daterange", JSON.stringify(dateRange));
+      localStorage.setItem("flarestack_daterange", JSON.stringify(dateRange));
     }
 
     if (!dateRange.live) return;

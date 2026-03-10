@@ -1,5 +1,5 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1';
-import { actionLogs } from '@flarefilter/db/src/schema/zones';
+import { actionLogs } from '@flarestack/db/src/schema/zones';
 import { log } from '../log';
 
 export interface ActionLogParams {

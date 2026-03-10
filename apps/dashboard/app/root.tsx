@@ -17,12 +17,12 @@ import { useLocation } from "react-router";
 
 export const meta: Route.MetaFunction = () => [
   // ... existing meta ...
-  { title: "FlareFilter - Automated Cloudflare IP Protection" },
-  { name: "description", content: "FlareFilter automatically detects and blocks abusive IP addresses on Cloudflare using real-time analytics. Protect your zones without lifting a finger." },
+  { title: "FlareStack - Automated Cloudflare IP Protection" },
+  { name: "description", content: "FlareStack automatically detects and blocks abusive IP addresses on Cloudflare using real-time analytics. Protect your zones without lifting a finger." },
   { name: "theme-color", content: "#4f46e5" },
   { property: "og:type", content: "website" },
-  { property: "og:site_name", content: "FlareFilter" },
-  { property: "og:title", content: "FlareFilter - Automated Cloudflare IP Protection" },
+  { property: "og:site_name", content: "FlareStack" },
+  { property: "og:title", content: "FlareStack - Automated Cloudflare IP Protection" },
   { property: "og:description", content: "Detect and block abusive IPs on Cloudflare automatically. Real-time analytics, configurable thresholds, and zero manual intervention." },
   { property: "og:image", content: "/assets/og-image.png" },
   { name: "robots", content: "noindex, nofollow" }, // dashboard is private

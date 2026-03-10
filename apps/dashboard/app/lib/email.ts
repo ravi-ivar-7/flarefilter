@@ -13,13 +13,13 @@ export async function sendVerificationEmail(
   url: string
 ): Promise<void> {
   const resend = new Resend(env.RESEND_API_KEY);
-  const from = env.RESEND_FROM || 'FlareFilter <onboarding@resend.dev>';
+  const from = env.RESEND_FROM || 'FlareStack <onboarding@resend.dev>';
   const logoUrl = `${env.BETTER_AUTH_BASE_URL || ''}/assets/icon.png`;
 
   const { error } = await resend.emails.send({
     from,
     to,
-    subject: 'Verify your FlareFilter account',
+    subject: 'Verify your FlareStack account',
     html: `
 <!DOCTYPE html>
 <html>
@@ -34,7 +34,7 @@ export async function sendVerificationEmail(
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
           <tr>
             <td style="padding:28px 40px 20px;border-bottom:1px solid #f1f5f9;">
-              <img src="${logoUrl}" alt="FlareFilter" height="36" style="display:block;height:36px;width:auto;" />
+              <img src="${logoUrl}" alt="FlareStack" height="36" style="display:block;height:36px;width:auto;" />
             </td>
           </tr>
           <tr>
@@ -43,7 +43,7 @@ export async function sendVerificationEmail(
                 Verify your email address
               </h1>
               <p style="margin:0 0 28px;font-size:14px;color:#64748b;line-height:1.6;">
-                Click the button below to verify your email and activate your FlareFilter account.
+                Click the button below to verify your email and activate your FlareStack account.
                 This link expires in 24 hours.
               </p>
               <a href="${url}"
@@ -52,7 +52,7 @@ export async function sendVerificationEmail(
                 Verify Email Address
               </a>
               <p style="margin:28px 0 0;font-size:12px;color:#94a3b8;line-height:1.6;">
-                If you didn't create a FlareFilter account, you can safely ignore this email.<br />
+                If you didn't create a FlareStack account, you can safely ignore this email.<br />
                 Or copy this link: <span style="color:#0f172a;word-break:break-all;">${url}</span>
               </p>
             </td>
@@ -60,7 +60,7 @@ export async function sendVerificationEmail(
           <tr>
             <td style="padding:20px 40px;background:#f8fafc;border-top:1px solid #f1f5f9;">
               <p style="margin:0;font-size:12px;color:#94a3b8;">
-                FlareFilter — Edge-native IP reputation &amp; automated blocking
+                FlareStack — Edge-native IP reputation &amp; automated blocking
               </p>
             </td>
           </tr>
@@ -70,11 +70,11 @@ export async function sendVerificationEmail(
   </table>
 </body>
 </html>`.trim(),
-    text: `Verify your FlareFilter account\n\nClick this link to verify your email:\n${url}\n\nThis link expires in 24 hours.`,
+    text: `Verify your FlareStack account\n\nClick this link to verify your email:\n${url}\n\nThis link expires in 24 hours.`,
   });
 
   if (error) {
-    console.error('[FlareFilter] Failed to send verification email:', error);
+    console.error('[FlareStack] Failed to send verification email:', error);
     throw new Error(`Email delivery failed: ${error.message ?? JSON.stringify(error)}`);
   }
 }

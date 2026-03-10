@@ -1,5 +1,5 @@
 // ============================================
-// FlareFilter — Production Deployment Script
+// FlareStack — Production Deployment Script
 // ============================================
 //
 // Usage: pnpm run deploy
@@ -63,7 +63,7 @@ function run(command, options = {}) {
 
 // ── Deploy ───────────────────────────────────
 async function deploy() {
-    header('FlareFilter  Production Deployment');
+    header('FlareStack  Production Deployment');
 
     // ── 1. Auth Check ────────────────────────
     step('Checking Cloudflare authentication');
@@ -83,15 +83,15 @@ async function deploy() {
     try {
         const d1List = run('npx wrangler d1 list --json', { silent: true });
         const d1s = JSON.parse(d1List);
-        const existing = d1s.find(d => d.name === 'flarefilter-db');
+        const existing = d1s.find(d => d.name === 'flarestack-db');
 
         if (existing) {
             dbId = existing.uuid;
-            success(`Found existing D1: flarefilter-db`);
+            success(`Found existing D1: flarestack-db`);
             kv('ID', dbId);
         } else {
-            info('Creating new D1 database: flarefilter-db');
-            const created = run('npx wrangler d1 create flarefilter-db', { silent: true });
+            info('Creating new D1 database: flarestack-db');
+            const created = run('npx wrangler d1 create flarestack-db', { silent: true });
 
             // Extract database_id from config snippet in stdout
             const match = created.match(/"database_id":\s*"([^"]+)"/);
@@ -117,7 +117,7 @@ async function deploy() {
         const kvList = run('npx wrangler kv namespace list', { silent: true });
         const kvs = JSON.parse(kvList);
         const existing = kvs.find(k =>
-            k.title === 'flarefilter-worker-BLOCKLIST' || k.title === 'BLOCKLIST'
+            k.title === 'flarestack-worker-BLOCKLIST' || k.title === 'BLOCKLIST'
         );
 
         if (existing) {
@@ -165,13 +165,13 @@ async function deploy() {
 
     // ── 5. Deploy ────────────────────────────
     step('Applying DB migrations to production');
-    run('npx wrangler d1 migrations apply flarefilter-db --remote --config apps/dashboard/wrangler.jsonc');
+    run('npx wrangler d1 migrations apply flarestack-db --remote --config apps/dashboard/wrangler.jsonc');
     success('Migrations applied');
 
     console.log('');
 
     step('Deploying Worker');
-    run('pnpm --filter @flarefilter/worker run deploy');
+    run('pnpm --filter @flarestack/worker run deploy');
     success('Worker deployed');
 
     console.log('');

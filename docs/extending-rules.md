@@ -1,6 +1,6 @@
-# Extending Rules in FlareFilter
+# Extending Rules in FlareStack
 
-FlareFilter uses a **Registry-Driven Architecture** that allows you to add new mitigation rules with minimal changes to the core engine and dashboard.
+FlareStack uses a **Registry-Driven Architecture** that allows you to add new mitigation rules with minimal changes to the core engine and dashboard.
 
 ## Overview of the Architecture
 

@@ -1,10 +1,10 @@
 import { RuleHandlers } from './rules/index';
-import { CloudflareClient } from '@flarefilter/cloudflare';
+import { CloudflareClient } from '@flarestack/cloudflare';
 import { ActionLogger } from './lib/actions/logger';
-import { CacheStore } from '@flarefilter/db/src/cache';
+import { CacheStore } from '@flarestack/db/src/cache';
 import { log } from './lib/log';
 
-import { cloudflareAccounts } from '@flarefilter/db/src/schema/zones';
+import { cloudflareAccounts } from '@flarestack/db/src/schema/zones';
 import { ZoneConfig } from './rules/interface';
 
 // Shape of a pre-loaded account row from cron.ts.

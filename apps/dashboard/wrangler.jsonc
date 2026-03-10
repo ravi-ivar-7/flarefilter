@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "flarefilter-dashboard",
+  "name": "flarestack-dashboard",
   "compatibility_date": "2025-04-04",
   "compatibility_flags": [
     "nodejs_compat"
@@ -9,7 +9,7 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "flarefilter-db",
+      "database_name": "flarestack-db",
       "database_id": "08d3a032-70b5-4541-93f3-2dac72079d3b",
       "migrations_dir": "../../packages/db/migrations"
     }

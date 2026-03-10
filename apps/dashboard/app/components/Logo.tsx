@@ -1,5 +1,5 @@
 /**
- * FlareFilter Brand Logo Component
+ * FlareStack Brand Logo Component
  *
  * Uses Vite asset imports so the correct hashed URL is resolved at build time.
  *
@@ -52,7 +52,7 @@ export function Logo({
             : bg === "white" ? logoWhiteSrc
                 : logoBglessSrc;
 
-    const alt = variant === "icon" ? "FlareFilter" : "FlareFilter";
+    const alt = variant === "icon" ? "FlareStack" : "FlareStack";
 
     return (
         <img

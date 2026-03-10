@@ -1,5 +1,5 @@
 {
-  "name": "flarefilter",
+  "name": "flarestack",
   "version": "1.0.0",
   "private": true,
   "description": "SaaS-ready, edge-native IP reputation and automated blocking system for Cloudflare.",

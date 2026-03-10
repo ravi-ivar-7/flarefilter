@@ -52,7 +52,7 @@ export function AddIpToList({ zoneId, onClose, isSubmitting, zones, accounts, co
                     <div>
                         <label className={labelCls}>Rule Name <span className="text-rose-500">*</span></label>
                         <input type="text" name="name" placeholder='e.g. "API Rate Limiting"' required className={inputCls} />
-                        <p className="mt-1 text-[10px] text-slate-500 font-medium">Internal name for this rule in FlareFilter.</p>
+                        <p className="mt-1 text-[10px] text-slate-500 font-medium">Internal name for this rule in FlareStack.</p>
                     </div>
                 </div>
 

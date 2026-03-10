@@ -78,7 +78,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
 
                         <Link to="/" className="flex items-center gap-2 flex-shrink-0">
                             <Logo variant="icon" size={26} animate={false} />
-                            <span className="text-sm font-black tracking-tight text-slate-900">FlareFilter</span>
+                            <span className="text-sm font-black tracking-tight text-slate-900">FlareStack</span>
                         </Link>
 
                         {!isDashboardPath && session?.user && (
@@ -137,7 +137,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                                 >
                                     <Logo variant="icon" size={30} animate={false} />
                                     <span className="text-base font-black tracking-tight text-slate-900 hidden sm:block">
-                                        FlareFilter
+                                        FlareStack
                                     </span>
                                 </Link>
                             )}

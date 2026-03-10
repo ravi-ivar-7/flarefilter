@@ -1,8 +1,8 @@
-# FlareFilter
-FlareFilter is an intelligent, edge-native IP reputation and automated blocking system built specifically for the Cloudflare ecosystem. It monitors traffic patterns in real-time, identifies high-velocity activity, and synchronizes lists across the global edge using Cloudflare Workers, D1, and KV.
+# FlareStack
+FlareStack is an intelligent, edge-native IP reputation and automated blocking system built specifically for the Cloudflare ecosystem. It monitors traffic patterns in real-time, identifies high-velocity activity, and synchronizes lists across the global edge using Cloudflare Workers, D1, and KV.
 
 ## Architecture
-FlareFilter operates on a "Analyze-Store-Enforce" loop:
+FlareStack operates on a "Analyze-Store-Enforce" loop:
 
 ### Cron Worker: A scheduled TypeScript worker that queries the Cloudflare GraphQL Analytics API. **The execution interval and analysis logic are 100% dynamic**, fetched from D1 to support multi-tenant configurations with safe defaults.
 

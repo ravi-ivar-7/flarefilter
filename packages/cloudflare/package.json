@@ -1,5 +1,5 @@
 {
-    "name": "@flarefilter/cloudflare",
+    "name": "@flarestack/cloudflare",
     "version": "1.0.0",
     "private": true,
     "type": "module",

@@ -1,4 +1,4 @@
-import { RULES_MANIFEST, type RuleType } from "@flarefilter/rules";
+import { RULES_MANIFEST, type RuleType } from "@flarestack/rules";
 import type { ReactNode } from "react";
 import { AddIpToList } from "../../components/dashboard/modals/rules/AddIpToList";
 

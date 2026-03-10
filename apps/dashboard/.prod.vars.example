@@ -1,5 +1,5 @@
 # ============================================
-# FlareFilter — Production Secrets Template
+# FlareStack — Production Secrets Template
 # ============================================
 # Copy this file to .prod.vars and fill in
 # your real production values.
@@ -20,4 +20,4 @@ BETTER_AUTH_SECRET=""
 RESEND_API_KEY=""
 # Optional: from address (must be from a Resend-verified domain).
 # Leave blank to use onboarding@resend.dev for testing.
-RESEND_FROM="FlareFilter <noreply@yourdomain.com>"
+RESEND_FROM="FlareStack <noreply@yourdomain.com>"

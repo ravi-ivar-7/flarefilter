@@ -14,13 +14,13 @@ importers:
 
   apps/dashboard:
     dependencies:
-      '@flarefilter/cloudflare':
+      '@flarestack/cloudflare':
         specifier: workspace:^
         version: link:../../packages/cloudflare
-      '@flarefilter/db':
+      '@flarestack/db':
         specifier: workspace:^
         version: link:../../packages/db
-      '@flarefilter/rules':
+      '@flarestack/rules':
         specifier: workspace:^
         version: link:../../packages/rules
       better-auth:
@@ -81,13 +81,13 @@ importers:
 
   apps/worker:
     dependencies:
-      '@flarefilter/cloudflare':
+      '@flarestack/cloudflare':
         specifier: workspace:*
         version: link:../../packages/cloudflare
-      '@flarefilter/db':
+      '@flarestack/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@flarefilter/rules':
+      '@flarestack/rules':
         specifier: workspace:*
         version: link:../../packages/rules
       cron-parser:
@@ -128,7 +128,7 @@ importers:
 
   packages/rules:
     dependencies:
-      '@flarefilter/db':
+      '@flarestack/db':
         specifier: workspace:*
         version: link:../db
 

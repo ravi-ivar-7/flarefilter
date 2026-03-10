@@ -1,18 +1,18 @@
 import { drizzle } from 'drizzle-orm/d1';
-import { zoneConfigs, cloudflareAccounts } from '@flarefilter/db/src/schema/zones';
+import { zoneConfigs, cloudflareAccounts } from '@flarestack/db/src/schema/zones';
 import { eq, inArray, and } from 'drizzle-orm';
-import { RULES_MANIFEST } from '@flarefilter/rules';
+import { RULES_MANIFEST } from '@flarestack/rules';
 import { Env } from './index';
 import { RuleEngine } from './engine';
 import { ActionLogger } from './lib/actions/logger';
-import { CacheStore } from '@flarefilter/db/src/cache';
-import { CloudflareClient } from '@flarefilter/cloudflare';
+import { CacheStore } from '@flarestack/db/src/cache';
+import { CloudflareClient } from '@flarestack/cloudflare';
 import { initLogger, log } from './lib/log';
 
 // ─── Main cron handler ───────────────────────────────────────────────────────
 export async function runCronTasks(env: Env): Promise<void> {
     initLogger(env.DEBUG === 'true');
-    log('--- FlareFilter Execution Loop ---');
+    log('--- FlareStack Execution Loop ---');
     const db = drizzle(env.DB);
 
     // ── 1. Load all active zones ─────────────────────────────────────────────
@@ -191,5 +191,5 @@ export async function runCronTasks(env: Env): Promise<void> {
         }
     });
 
-    log('\n--- FlareFilter Execution Loop Complete ---');
+    log('\n--- FlareStack Execution Loop Complete ---');
 }

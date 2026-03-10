@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================
-# FlareFilter — Nuke & Reset Script
+# FlareStack — Nuke & Reset Script
 # ============================================
 #
 # Usage: pnpm run nuke
@@ -22,7 +22,7 @@ set -o pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/utils.sh"
 
-log_header "FlareFilter  Nuke & Reset"
+log_header "FlareStack  Nuke & Reset"
 
 log_warn "This will delete your local database, generated migrations,"
 log_warn "auth secrets, node_modules, and all build artifacts."

@@ -1,7 +1,7 @@
-import { CloudflareClient } from '@flarefilter/cloudflare';
+import { CloudflareClient } from '@flarestack/cloudflare';
 import { ActionLogger } from '../lib/actions/logger';
-import { CacheStore } from '@flarefilter/db/src/cache';
-import { addIpToListRules } from '@flarefilter/db/src/schema/zones';
+import { CacheStore } from '@flarestack/db/src/cache';
+import { addIpToListRules } from '@flarestack/db/src/schema/zones';
 
 // Typed rule rows per rule type — extend this union as new rule types are added.
 export type AddIpToListRuleRow = typeof addIpToListRules.$inferSelect;

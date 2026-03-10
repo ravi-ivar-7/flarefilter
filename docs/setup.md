@@ -1,6 +1,6 @@
-# FlareFilter Setup & Deployment Guide
+# FlareStack Setup & Deployment Guide
 
-Welcome to FlareFilter! Follow this guide to get your IP reputation and automated blocking system running locally and in production.
+Welcome to FlareStack! Follow this guide to get your IP reputation and automated blocking system running locally and in production.
 
 ---
 
@@ -22,8 +22,8 @@ pnpm run nuke
 pnpm install
 
 # 2. Setup Local Database
-pnpm --filter @flarefilter/db generate
-npx wrangler d1 migrations apply flarefilter-db --local --config apps/dashboard/wrangler.jsonc --persist-to .wrangler/state
+pnpm --filter @flarestack/db generate
+npx wrangler d1 migrations apply flarestack-db --local --config apps/dashboard/wrangler.jsonc --persist-to .wrangler/state
 
 # 3. Create Local Secrets
 cat <<EOF > apps/dashboard/.dev.vars
@@ -63,7 +63,7 @@ pnpm run deploy
 ```bash
 # 1. Infrastructure Creation
 npx wrangler login
-npx wrangler d1 create flarefilter-db
+npx wrangler d1 create flarestack-db
 npx wrangler kv namespace create BLOCKLIST
 
 # 2. Configuration (Manual Link)
@@ -72,9 +72,9 @@ npx wrangler kv namespace create BLOCKLIST
 # - apps/worker/wrangler.jsonc (database_id & KV id)
 
 # 3. Deploy
-npx wrangler d1 migrations apply flarefilter-db --remote --config apps/dashboard/wrangler.jsonc
-pnpm --filter @flarefilter/worker deploy
-pnpm --filter @flarefilter/dashboard deploy
+npx wrangler d1 migrations apply flarestack-db --remote --config apps/dashboard/wrangler.jsonc
+pnpm --filter @flarestack/worker deploy
+pnpm --filter @flarestack/dashboard deploy
 
 # 4. Fill in production secrets
 # Copy the template and fill in your values:
@@ -95,11 +95,11 @@ Run these commands whenever you modify `packages/db/src/schema/`.
 
 ```bash
 # Generate new SQL migration files
-pnpm --filter @flarefilter/db generate
+pnpm --filter @flarestack/db generate
 
 # Apply to Local DB
-npx wrangler d1 migrations apply flarefilter-db --local --config apps/dashboard/wrangler.jsonc --persist-to .wrangler/state
+npx wrangler d1 migrations apply flarestack-db --local --config apps/dashboard/wrangler.jsonc --persist-to .wrangler/state
 
 # Apply to Production DB
-npx wrangler d1 migrations apply flarefilter-db --remote --config apps/dashboard/wrangler.jsonc
+npx wrangler d1 migrations apply flarestack-db --remote --config apps/dashboard/wrangler.jsonc
 ```
