@@ -52,11 +52,32 @@ function divider() { console.log(`${C.dim}${'─'.repeat(44)}${C.reset}`); }
 
 // ── Shell Helper ─────────────────────────────
 function run(command, options = {}) {
+    // We MUST use 'pipe' if we want to capture output for error analysis
+    const stdio = (options.silent || options.captureError) ? 'pipe' : 'inherit';
+    
     try {
-        return execSync(command, { encoding: 'utf8', stdio: options.silent ? 'pipe' : 'inherit' });
+        const stdout = execSync(command, { 
+            encoding: 'utf8', 
+            stdio: stdio
+        });
+        
+        // If we captured output but weren't asked to be silent, 
+        // print it now so the user sees progress
+        if (!options.silent && options.captureError && stdout) {
+            process.stdout.write(stdout);
+        }
+        
+        return stdout;
     } catch (err) {
-        if (options.ignoreError) return null;
+        if (options.ignoreError) return err.stdout || err.message;
+        
+        // If the caller wants to handle the error themselves, throw it
+        // execSync attaches stdout/stderr to the error object when using 'pipe'
+        if (options.captureError) throw err;
+
         error(`Command failed: ${command}`);
+        if (err.stdout) console.log(err.stdout.toString());
+        if (err.stderr) console.error(err.stderr.toString());
         process.exit(1);
     }
 }
@@ -110,42 +131,7 @@ async function deploy() {
 
     console.log('');
 
-    // ── 3. KV Namespace ──────────────────────
-    step('Configuring KV Namespace');
-    let kvId = '';
-    try {
-        const kvList = run('npx wrangler kv namespace list', { silent: true });
-        const kvs = JSON.parse(kvList);
-        const existing = kvs.find(k =>
-            k.title === 'flarestack-worker-BLOCKLIST' || k.title === 'BLOCKLIST'
-        );
-
-        if (existing) {
-            kvId = existing.id;
-            success(`Found existing KV: ${existing.title}`);
-            kv('ID', kvId);
-        } else {
-            info('Creating new KV namespace: BLOCKLIST');
-            const created = run('npx wrangler kv namespace create BLOCKLIST', { silent: true });
-
-            // Extract id from config snippet in stdout
-            const match = created.match(/"id":\s*"([^"]+)"/);
-            if (match) {
-                kvId = match[1];
-                success('KV namespace created');
-                kv('ID', kvId);
-            } else {
-                throw new Error("Could not parse KV create output");
-            }
-        }
-    } catch (e) {
-        error('Failed to find or create KV namespace');
-        process.exit(1);
-    }
-
-    console.log('');
-
-    // ── 4. Update Config Files ───────────────
+    // ── 3. Update Config Files ───────────────
     step('Updating wrangler config files with production IDs');
 
     const dashboardConfPath = path.join(__dirname, '../apps/dashboard/wrangler.jsonc');
@@ -157,16 +143,57 @@ async function deploy() {
     const workerConfPath = path.join(__dirname, '../apps/worker/wrangler.jsonc');
     let workerConf = fs.readFileSync(workerConfPath, 'utf8');
     workerConf = workerConf.replace(/"database_id":\s*"[^"]*"/, `"database_id": "${dbId}"`);
-    workerConf = workerConf.replace(/"id":\s*"[^"]*"/, `"id": "${kvId}"`);
     fs.writeFileSync(workerConfPath, workerConf);
     success('apps/worker/wrangler.jsonc updated');
 
     console.log('');
 
-    // ── 5. Deploy ────────────────────────────
+    // ── 4. Deploy ────────────────────────────
+    const shouldReset = process.argv.includes('--reset-db');
+
+    if (shouldReset) {
+        warn('Resetting production database as requested...');
+        // Drop common tables + migration table to allow a clean re-run
+        const dropTables = [
+            'account', 'session', 'user', 'verification', 
+            'action_logs', 'add_ip_to_list_rules', 'cloudflare_accounts', 
+            'zone_configs', 'entity_cache', 'd1_migrations'
+        ];
+        const dropCommand = `npx wrangler d1 execute flarestack-db --remote --command "${dropTables.map(t => `DROP TABLE IF EXISTS ${t}`).join('; ')};" --config apps/dashboard/wrangler.jsonc`;
+        run(dropCommand);
+        success('Production database wiped');
+        console.log('');
+    }
+
     step('Applying DB migrations to production');
-    run('npx wrangler d1 migrations apply flarestack-db --remote --config apps/dashboard/wrangler.jsonc');
-    success('Migrations applied');
+    try {
+        run('npx wrangler d1 migrations apply flarestack-db --remote --config apps/dashboard/wrangler.jsonc', { captureError: true });
+        success('Migrations applied');
+    } catch (err) {
+        const stdout = err.stdout?.toString() || '';
+        const stderr = err.stderr?.toString() || '';
+        const output = stdout + stderr;
+
+        if (output.includes('already exists')) {
+            console.log('');
+            console.log(`${C.bold}${C.red}${ICON.error} CONFLICT: Production database is out of sync with your local history.${C.reset}`);
+            console.log(`${C.dim}──────────────────────────────────────────────────────────────────${C.reset}`);
+            console.log(`${C.yellow}Why this happened:${C.reset}`);
+            console.log(`You likely ran ${C.cyan}pnpm run nuke${C.reset} locally, which wiped your migration history.`);
+            console.log(`However, your remote Cloudflare D1 database still has your old tables.`);
+            console.log('');
+            console.log(`${C.green}The Fix:${C.reset}`);
+            console.log(`Run the deploy again with the ${C.bold}--reset-db${C.reset} flag to wipe production and start fresh:`);
+            console.log(`${C.bold}${C.cyan}  pnpm run deploy -- --reset-db${C.reset}`);
+            console.log(`${C.dim}──────────────────────────────────────────────────────────────────${C.reset}\n`);
+            process.exit(1);
+        } else {
+            error('Migration failed');
+            if (stdout) console.log(stdout);
+            if (stderr) console.error(stderr);
+            process.exit(1);
+        }
+    }
 
     console.log('');
 
@@ -178,8 +205,19 @@ async function deploy() {
 
     step('Deploying Dashboard');
     const deployOutput = run('pnpm --filter dashboard run deploy', { silent: true });
-    console.log(deployOutput); // show the output to the user
+    
+    // Extract the production URL from wrangler output
+    let prodUrl = '<YOUR_PRODUCTION_URL>';
+    const urlMatch = deployOutput.match(/https:\/\/[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev/i);
+    if (urlMatch) {
+        prodUrl = urlMatch[0];
+    }
+
+    console.log(deployOutput); 
     success('Dashboard deployed');
+    if (prodUrl !== '<YOUR_PRODUCTION_URL>') {
+        kv('URL', prodUrl);
+    }
 
     // ── 6. Sync Cloudflare Secrets ───────────
     step('Syncing Cloudflare production secrets from .prod.vars');
@@ -207,23 +245,42 @@ async function deploy() {
     };
 
     if (prodVars) {
-        const authSecret = parseVar(prodVars, 'BETTER_AUTH_SECRET');
-        const baseUrl = parseVar(prodVars, 'BETTER_AUTH_BASE_URL');
-        const gmailUser = parseVar(prodVars, 'GMAIL_USER');
-        const gmailPass = parseVar(prodVars, 'GMAIL_APP_PASSWORD');
+        let authSecret = parseVar(prodVars, 'BETTER_AUTH_SECRET');
+        let baseUrl = parseVar(prodVars, 'BETTER_AUTH_BASE_URL');
+        const resendApiKey = parseVar(prodVars, 'RESEND_API_KEY');
+        const resendFrom = parseVar(prodVars, 'RESEND_FROM');
 
-        if (!authSecret) warn('BETTER_AUTH_SECRET is empty in .prod.vars — auth will fail in production!');
+        // Auto-generate BETTER_AUTH_SECRET if missing
+        if (!authSecret) {
+            const crypto = require('crypto');
+            authSecret = crypto.randomBytes(32).toString('base64');
+            const updatedVars = prodVars.replace(/BETTER_AUTH_SECRET="[^"]*"/, `BETTER_AUTH_SECRET="${authSecret}"`);
+            prodVars = updatedVars; // Update memory copy
+            fs.writeFileSync(prodVarsPath, updatedVars);
+            success('Generated new BETTER_AUTH_SECRET and saved to .prod.vars');
+        }
+
+        // Auto-fix BETTER_AUTH_BASE_URL if it's the placeholder
+        if ((!baseUrl || baseUrl.includes('your-app.workers.dev')) && prodUrl !== '<YOUR_PRODUCTION_URL>') {
+            baseUrl = prodUrl;
+            const updatedVars = prodVars.replace(/BETTER_AUTH_BASE_URL="[^"]*"/, `BETTER_AUTH_BASE_URL="${baseUrl}"`);
+            fs.writeFileSync(prodVarsPath, updatedVars);
+            success(`Auto-updated BETTER_AUTH_BASE_URL to ${baseUrl}`);
+        }
+
         if (!baseUrl) warn('BETTER_AUTH_BASE_URL is empty in .prod.vars — auth will fail in production!');
 
         pushSecret('BETTER_AUTH_SECRET', authSecret) && info('BETTER_AUTH_SECRET pushed');
         pushSecret('BETTER_AUTH_BASE_URL', baseUrl) && info('BETTER_AUTH_BASE_URL pushed');
 
-        if (gmailUser && gmailPass) {
-            pushSecret('GMAIL_USER', gmailUser) && info('GMAIL_USER pushed');
-            pushSecret('GMAIL_APP_PASSWORD', gmailPass) && info('GMAIL_APP_PASSWORD pushed');
-            success('All secrets synced (email verification enabled)');
+        if (resendApiKey) {
+            pushSecret('RESEND_API_KEY', resendApiKey) && info('RESEND_API_KEY pushed');
+            if (resendFrom) {
+                pushSecret('RESEND_FROM', resendFrom) && info('RESEND_FROM pushed');
+            }
+            success('All secrets synced (email verification enabled via Resend)');
         } else {
-            success('Core secrets synced (Gmail not configured — accounts will auto-activate)');
+            success('Core secrets synced (Resend not configured — accounts will auto-activate)');
         }
     }
 
@@ -233,7 +290,6 @@ async function deploy() {
     console.log(`${C.bold}${C.green}✨ Deployment complete!${C.reset}`);
     console.log('');
     kv('D1 Database ID ', dbId);
-    kv('KV Namespace ID', kvId);
     if (prodUrl !== '<YOUR_PRODUCTION_URL>') {
         kv('Production URL ', prodUrl);
     }

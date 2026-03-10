@@ -1,38 +1,34 @@
 # FlareStack
-FlareStack is an intelligent, edge-native IP reputation and automated blocking system built specifically for the Cloudflare ecosystem. It monitors traffic patterns in real-time, identifies high-velocity activity, and synchronizes lists across the global edge using Cloudflare Workers, D1, and KV.
 
-## Architecture
-FlareStack operates on a "Analyze-Store-Enforce" loop:
+FlareStack is a tool that runs on Cloudflare Workers to automatically block IPs that are hitting your site too hard. 
 
-### Cron Worker: A scheduled TypeScript worker that queries the Cloudflare GraphQL Analytics API. **The execution interval and analysis logic are 100% dynamic**, fetched from D1 to support multi-tenant configurations with safe defaults.
+Instead of processing every single request in real-time (which gets expensive), it runs on a cron schedule, asks the Cloudflare GraphQL Analytics API "who made too many requests recently?", and then automatically shoves those IPs into a Cloudflare WAF Custom List to drop them at the edge.
 
-### Cloudflare D1: A SQLite database that stores historical traffic data, allowing for trend analysis and persistent reputation scoring. Drizzle ORM
+## How it Works
 
-### Workers KV: High-speed key-value storage used to distribute the "Active Blocklist" to every Cloudflare data center globally with sub-10ms latency.
+The system is split into three main parts:
 
-### Next.js: A sleek dashboard to visualize mitigations, manage thresholds, and manually override blocks.
+1. **Cloudflare Worker:** A cron schedule that wakes up every minute, reads your rules from the database, and queries the Cloudflare Analytics GraphQL API to find IPs that crossed your thresholds. If an IP is being abusive, it uses the Cloudflare API to add it to a WAF Custom List.
+2. **Cloudflare D1:** A serverless SQLite database. This stores your Cloudflare API tokens, which zones you are monitoring, and your actual mitigation rules (e.g. "Block any IP that makes > 10,000 requests in 5 minutes").
+3. **Dashboard:** A React UI to add your Cloudflare accounts, create new rules, and view the audit log of which IPs were blocked recently.
 
 ## Tech Stack
 
-- Runtime: Cloudflare Workers (v8 interface)
-- Database: Cloudflare D1 (SQLite at the edge)
-- Storage: Workers KV (Low-latency key-value)
-- Framework: Next.js (Admin Dashboard)
-- Auth: Better-Auth (for multi-tenant SaaS authentication)
-- Language: TypeScript
-- Analysis: Cloudflare GraphQL Analytics API
+- **Worker:** Cloudflare Workers + TypeScript
+- **Database:** Cloudflare D1 + Drizzle ORM
+- **Dashboard:** React Router v7 + Tailwind CSS
+- **Auth:** Better-Auth (using SQLite)
 
-## Features
+## Current Features
 
-- **SaaS-Ready:** No hardcoded settings. Every client's thresholds, execution frequencies, and **Cloudflare API keys** are managed via the dashboard and stored in D1 (No `.env` files for tenant configs).
-- **V1 Focus:** Uses the Cloudflare GraphQL Analytics API as a data source to efficiently query: *"Give me all IPs that made > [Threshold] requests in the last hour,"* rather than fetching and processing every single log line manually. (Full, granular analytics parsing is planned for future versions).
-- Automated Rate Detection: Catch "low and slow" or "burst" activity that standard WAF rules might miss.
-- Historical Lookback: Don't just block for minutes—analyze patterns over days or weeks using D1.
-- Zero-Latency Enforcement: Blocking happens at the edge, before your origin server is even touched.
-- Admin Dashboard: Real-time visualization of mitigations and manual "VIP" allow-listing.
+Currently, FlareStack supports one primary rule type: **Add IP to List**.
+
+You configure a threshold (e.g., 5,000 requests) and a time window (e.g., 5 minutes). The worker will find any IP that exceeded that limit within the window and automatically append it to a Cloudflare Custom List of your choosing.
+
+Because it updates actual Cloudflare WAF lists, the blocking happens natively at Cloudflare's edge with absolutely zero added latency to your origin server.
 
 ## Documentation
 
-- [Setup Guide](./setup.md) - How to get started locally.
-- [Extending Rules](./extending-rules.md) - How to add new rule types and handlers.
-- [TODO](./todo.md) - Roadmap and pending features.
+- [Setup Guide](./setup.md) - How to run it locally or deploy it to your own Cloudflare account using GitHub actions or Wrangler.
+- [Extending Rules](./extending-rules.md) - How to add new types of mitigation rules to the engine.
+- [TODO](./todo.md) - Upcoming features.

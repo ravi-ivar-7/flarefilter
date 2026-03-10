@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "9acff346-531f-4d61-97d8-2a3a57d8aa09",
-  "prevId": "2d6321de-37e0-45f6-902f-a8dd67847f8c",
+  "id": "fce87519-3534-4b47-85a9-c2b4869c533e",
+  "prevId": "2762b0dc-bb2a-4db8-856b-2763b2161533",
   "tables": {
     "account": {
       "name": "account",
@@ -119,6 +119,44 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
+    "rateLimit": {
+      "name": "rateLimit",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "count": {
+          "name": "count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "lastRequest": {
+          "name": "lastRequest",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "session": {
       "name": "session",
       "columns": {
@@ -176,13 +214,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
-        },
-        "activeOrganizationId": {
-          "name": "activeOrganizationId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
           "autoincrement": false
         }
       },
@@ -333,231 +364,6 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "invitation": {
-      "name": "invitation",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "organizationId": {
-          "name": "organizationId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "email": {
-          "name": "email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "role": {
-          "name": "role",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "expiresAt": {
-          "name": "expiresAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "inviterId": {
-          "name": "inviterId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "invitation_organizationId_organization_id_fk": {
-          "name": "invitation_organizationId_organization_id_fk",
-          "tableFrom": "invitation",
-          "tableTo": "organization",
-          "columnsFrom": [
-            "organizationId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "invitation_inviterId_user_id_fk": {
-          "name": "invitation_inviterId_user_id_fk",
-          "tableFrom": "invitation",
-          "tableTo": "user",
-          "columnsFrom": [
-            "inviterId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "member": {
-      "name": "member",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "organizationId": {
-          "name": "organizationId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "userId": {
-          "name": "userId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "email": {
-          "name": "email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "role": {
-          "name": "role",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "member_organizationId_organization_id_fk": {
-          "name": "member_organizationId_organization_id_fk",
-          "tableFrom": "member",
-          "tableTo": "organization",
-          "columnsFrom": [
-            "organizationId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "member_userId_user_id_fk": {
-          "name": "member_userId_user_id_fk",
-          "tableFrom": "member",
-          "tableTo": "user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "organization": {
-      "name": "organization",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "slug": {
-          "name": "slug",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "logo": {
-          "name": "logo",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "metadata": {
-          "name": "metadata",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "organization_slug_unique": {
-          "name": "organization_slug_unique",
-          "columns": [
-            "slug"
-          ],
-          "isUnique": true
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
     "action_logs": {
       "name": "action_logs",
       "columns": {
@@ -568,8 +374,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "tenant_id": {
-          "name": "tenant_id",
+        "user_id": {
+          "name": "user_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -596,8 +402,16 @@
           "notNull": true,
           "autoincrement": false
         },
-        "ip": {
-          "name": "ip",
+        "target_type": {
+          "name": "target_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'IP'"
+        },
+        "target_value": {
+          "name": "target_value",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -607,7 +421,7 @@
           "name": "request_count",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "metadata": {
@@ -617,8 +431,8 @@
           "notNull": false,
           "autoincrement": false
         },
-        "blocked_at": {
-          "name": "blocked_at",
+        "timestamp": {
+          "name": "timestamp",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -645,8 +459,8 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "add_to_list_rules": {
-      "name": "add_to_list_rules",
+    "add_ip_to_list_rules": {
+      "name": "add_ip_to_list_rules",
       "columns": {
         "id": {
           "name": "id",
@@ -655,6 +469,14 @@
           "notNull": true,
           "autoincrement": false
         },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'IP Mitigation Rule'"
+        },
         "zone_config_id": {
           "name": "zone_config_id",
           "type": "text",
@@ -662,8 +484,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "tenant_id": {
-          "name": "tenant_id",
+        "user_id": {
+          "name": "user_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -687,7 +509,7 @@
           "name": "rate_limit_threshold",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false,
           "default": 10000
         },
@@ -695,7 +517,7 @@
           "name": "window_seconds",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false,
           "default": 300
         },
@@ -703,7 +525,7 @@
           "name": "is_active",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false,
           "default": true
         },
@@ -724,9 +546,9 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "add_to_list_rules_zone_config_id_zone_configs_id_fk": {
-          "name": "add_to_list_rules_zone_config_id_zone_configs_id_fk",
-          "tableFrom": "add_to_list_rules",
+        "add_ip_to_list_rules_zone_config_id_zone_configs_id_fk": {
+          "name": "add_ip_to_list_rules_zone_config_id_zone_configs_id_fk",
+          "tableFrom": "add_ip_to_list_rules",
           "tableTo": "zone_configs",
           "columnsFrom": [
             "zone_config_id"
@@ -737,12 +559,12 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "add_to_list_rules_tenant_id_organization_id_fk": {
-          "name": "add_to_list_rules_tenant_id_organization_id_fk",
-          "tableFrom": "add_to_list_rules",
-          "tableTo": "organization",
+        "add_ip_to_list_rules_user_id_user_id_fk": {
+          "name": "add_ip_to_list_rules_user_id_user_id_fk",
+          "tableFrom": "add_ip_to_list_rules",
+          "tableTo": "user",
           "columnsFrom": [
-            "tenant_id"
+            "user_id"
           ],
           "columnsTo": [
             "id"
@@ -765,8 +587,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "tenant_id": {
-          "name": "tenant_id",
+        "user_id": {
+          "name": "user_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -810,85 +632,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "cloudflare_accounts_tenant_id_organization_id_fk": {
-          "name": "cloudflare_accounts_tenant_id_organization_id_fk",
+        "cloudflare_accounts_user_id_user_id_fk": {
+          "name": "cloudflare_accounts_user_id_user_id_fk",
           "tableFrom": "cloudflare_accounts",
-          "tableTo": "organization",
+          "tableTo": "user",
           "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "request_activity": {
-      "name": "request_activity",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "tenant_id": {
-          "name": "tenant_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "zone_config_id": {
-          "name": "zone_config_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "ip": {
-          "name": "ip",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "request_count": {
-          "name": "request_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "window_start": {
-          "name": "window_start",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "timestamp": {
-          "name": "timestamp",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "request_activity_zone_config_id_zone_configs_id_fk": {
-          "name": "request_activity_zone_config_id_zone_configs_id_fk",
-          "tableFrom": "request_activity",
-          "tableTo": "zone_configs",
-          "columnsFrom": [
-            "zone_config_id"
+            "user_id"
           ],
           "columnsTo": [
             "id"
@@ -911,8 +660,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "tenant_id": {
-          "name": "tenant_id",
+        "user_id": {
+          "name": "user_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -943,7 +692,7 @@
           "name": "is_active",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false,
           "default": true
         },
@@ -964,12 +713,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "zone_configs_tenant_id_organization_id_fk": {
-          "name": "zone_configs_tenant_id_organization_id_fk",
+        "zone_configs_user_id_user_id_fk": {
+          "name": "zone_configs_user_id_user_id_fk",
           "tableFrom": "zone_configs",
-          "tableTo": "organization",
+          "tableTo": "user",
           "columnsFrom": [
-            "tenant_id"
+            "user_id"
           ],
           "columnsTo": [
             "id"
@@ -992,6 +741,45 @@
         }
       },
       "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "entity_cache": {
+      "name": "entity_cache",
+      "columns": {
+        "namespace": {
+          "name": "namespace",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "synced_at": {
+          "name": "synced_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "entity_cache_namespace_key_pk": {
+          "columns": [
+            "namespace",
+            "key"
+          ],
+          "name": "entity_cache_namespace_key_pk"
+        }
+      },
       "uniqueConstraints": {},
       "checkConstraints": {}
     }

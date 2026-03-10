@@ -14,7 +14,7 @@
         {
             "binding": "DB",
             "database_name": "flarestack-db",
-            "database_id": "08d3a032-70b5-4541-93f3-2dac72079d3b",
+            "database_id": "b4ab5ec9-b72d-40dd-9e67-b84aedc967f8",
             "migrations_dir": "../../packages/db/migrations"
         }
     ],

@@ -4,19 +4,40 @@ Welcome to FlareStack! Follow this guide to get your IP reputation and automated
 
 ---
 
-## 💻 1. Local Development
-Initialize your local environment to build and test features safely.
+## 📦 1. Initial Setup
+Before running locally or deploying to production, you must initialize the repository.
 
-### 🚀 The "Fast way" (Automated)
 ```bash
-# Initialize everything
+# Step 1: Initialize the project (Run this FIRST)
 pnpm run setup
 
-# Clean reset (Wipe everything and start fresh)
-pnpm run nuke
+# ------------- TROUBLESHOOTING ------------- #
+# If your local environment breaks or you need to start over:
+# pnpm run nuke
 ```
 
-### 🛠️ The "Manual way" (Step-by-Step)
+### ⚠️ A Note on Environment Variables
+Running `pnpm run setup` creates an **`apps/dashboard/.dev.vars`** file for you with random secrets. 
+
+**Wait!** Before you continue:
+1. Open `apps/dashboard/.dev.vars`.
+2. (Optional) Paste your `RESEND_API_KEY` to enable email verification.
+3. If left blank, accounts will auto-activate (useful for quick local testing).
+
+---
+
+## 💻 2. Local Development
+After completing the initial setup, you can boot the local environment to test features safely.
+
+### 🚀 Quick Start
+> 💡 **Tip:** Make sure you've filled in your `apps/dashboard/.dev.vars` if you want to test email! (See Section 1).
+
+```bash
+# Start all development servers
+pnpm dev
+```
+
+### 🛠️ The "Manual Setup" (If you didn't use pnpm run setup)
 ```bash
 # 1. Install dependencies
 pnpm install
@@ -25,16 +46,17 @@ pnpm install
 pnpm --filter @flarestack/db generate
 npx wrangler d1 migrations apply flarestack-db --local --config apps/dashboard/wrangler.jsonc --persist-to .wrangler/state
 
-# 3. Create Local Secrets
+# 3. Environment Variables (Local Secrets)
 cat <<EOF > apps/dashboard/.dev.vars
 BETTER_AUTH_BASE_URL="http://localhost:5173"
 BETTER_AUTH_SECRET="$(openssl rand -base64 32)"
 
-# Optional: fill in to enable email verification via Gmail.
+# Optional: fill in to enable email verification via Resend (https://resend.com).
 # Leave blank → accounts auto-activate (no email needed).
-# Get an App Password: https://myaccount.google.com/apppasswords
-GMAIL_USER=""
-GMAIL_APP_PASSWORD=""
+RESEND_API_KEY=""
+# Optional: custom from address (must be from a Resend-verified domain).
+# Leave blank to use Resend's test sender (onboarding@resend.dev)
+RESEND_FROM=""
 EOF
 
 # 4. Start Development Server
@@ -43,7 +65,7 @@ pnpm dev
 
 ### 🎯 Next Steps (Local)
 1. Open `http://localhost:5173/auth` to **Sign Up** for your local user.
-2. **Email verification** is optional locally. Fill `GMAIL_USER` and `GMAIL_APP_PASSWORD` in `.dev.vars` to enable it — otherwise accounts activate instantly.
+2. **Email verification** is optional locally. Fill `RESEND_API_KEY` to enable it — otherwise accounts activate instantly.
 3. Connect a Cloudflare account and add your zones.
 4. **Test the Worker**: While `pnpm dev` is running, press **'t'** in the terminal to force a cron event, or visit `http://localhost:8787/__scheduled`.
 
@@ -51,10 +73,18 @@ pnpm dev
 
 ---
 
-## 🌐 2. Production Deployment
+## 🌐 3. Production Deployment
 Launch your system to the Cloudflare edge.
 
-### 🚀 The "Fast way" (Automated)
+> ⚠️ **IMPORTANT:** You must have run `pnpm run setup` locally at least once before deploying, as this installs dependencies and generates the database client.
+
+1. Copy the template: `cp apps/dashboard/.prod.vars.example apps/dashboard/.prod.vars`
+2. Open **`apps/dashboard/.prod.vars`** and fill in your values.
+
+> 💡 **Tip (The Chicken & Egg Problem):** If you don't know your production URL yet, leave `BETTER_AUTH_BASE_URL` as the default. Run the deployment (Step 2) once. The command will print your **Pages URL** at the end. Copy that URL back into `.prod.vars` and run the deploy again to sync it!
+
+### 🚀 Step 2: Deploy everything
+Once your variables are set, run:
 ```bash
 pnpm run deploy
 ```
@@ -64,19 +94,18 @@ pnpm run deploy
 # 1. Infrastructure Creation
 npx wrangler login
 npx wrangler d1 create flarestack-db
-npx wrangler kv namespace create BLOCKLIST
 
 # 2. Configuration (Manual Link)
-# Copy IDs from step 1 into:
-# - apps/dashboard/wrangler.jsonc (database_id)
-# - apps/worker/wrangler.jsonc (database_id & KV id)
+# Copy the database_id from step 1 into:
+# - apps/dashboard/wrangler.jsonc
+# - apps/worker/wrangler.jsonc
 
 # 3. Deploy
 npx wrangler d1 migrations apply flarestack-db --remote --config apps/dashboard/wrangler.jsonc
 pnpm --filter @flarestack/worker deploy
 pnpm --filter @flarestack/dashboard deploy
 
-# 4. Fill in production secrets
+# 4. Production Environment Variables
 # Copy the template and fill in your values:
 cp apps/dashboard/.prod.vars.example apps/dashboard/.prod.vars
 # Then edit apps/dashboard/.prod.vars with your real values.

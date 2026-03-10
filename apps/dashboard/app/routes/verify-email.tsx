@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams, useRouteLoaderData } from 'react-router';
 import { authClient } from '~/lib/auth-client';
 import { Logo } from '~/components/Logo';
+import type { Route as RootRoute } from "../+types/root";
 
 export const meta = () => [
     { title: "Verify Your Email - FlareStack" },
@@ -9,6 +10,9 @@ export const meta = () => [
 ];
 
 export default function VerifyEmailPage() {
+    const rootData = useRouteLoaderData("root") as { emailEnabled: boolean } | undefined;
+    const emailEnabled = rootData?.emailEnabled ?? true; // Default to true if unknown
+
     const [searchParams] = useSearchParams();
     const hasError = searchParams.get('error') === 'invalid_token';
     const urlEmail = searchParams.get('email') || '';
@@ -78,7 +82,27 @@ export default function VerifyEmailPage() {
                             <Logo variant="icon" size={48} animate={false} />
                         </div>
 
-                        {hasError ? (
+                        {!emailEnabled ? (
+                            <>
+                                <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600">
+                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
+                                    </svg>
+                                </div>
+                                <h1 className="text-2xl font-black tracking-tight text-slate-900 text-center">
+                                    Account active!
+                                </h1>
+                                <p className="text-sm font-medium text-slate-500 mt-2 text-center text-balance">
+                                    Email verification is disabled in this environment. Your account is already active.
+                                </p>
+                                <Link
+                                    to="/dashboard"
+                                    className="w-full mt-6 bg-slate-900 text-white text-sm font-semibold rounded-xl px-4 py-3 hover:bg-black transition-all duration-200 active:scale-[0.98] shadow-sm text-center"
+                                >
+                                    Enter Dashboard
+                                </Link>
+                            </>
+                        ) : hasError ? (
                             <>
                                 <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center mb-4">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-rose-600">

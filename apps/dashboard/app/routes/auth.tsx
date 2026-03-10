@@ -78,8 +78,8 @@ export default function LoginPage() {
                     onSuccess: (ctx: { data?: { user?: { emailVerified?: boolean } } }) => {
                         // If email verification is enabled, the user won't be verified yet.
                         // Redirect them to the verify-email page.
-                        // If Gmail is not configured, Better Auth auto-marks emailVerified=true
-                        // so we go straight to the dashboard.
+                        // If Resend is not configured, our server-side hook (databaseHooks)
+                        // automatically marks them as verified=true, so they go to dashboard.
                         if (ctx.data?.user?.emailVerified === false) {
                             navigate(`/verify-email?email=${encodeURIComponent(email)}`);
                         } else {

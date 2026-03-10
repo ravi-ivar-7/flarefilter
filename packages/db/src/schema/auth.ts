@@ -47,3 +47,10 @@ export const verification = sqliteTable("verification", {
     createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
     updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull(),
 });
+
+export const rateLimit = sqliteTable("rateLimit", {
+    id: text("id").primaryKey(),
+    key: text("key"),
+    count: integer("count"),
+    lastRequest: integer("lastRequest"),
+});

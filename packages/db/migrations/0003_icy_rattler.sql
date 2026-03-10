@@ -1,1 +1,0 @@
-ALTER TABLE `add_ip_to_list_rules` ADD `name` text NOT NULL DEFAULT 'Mitigation Rule';

@@ -1,1 +1,0 @@
-ALTER TABLE `zone_configs` DROP COLUMN `polling_interval_minutes`;

@@ -15,6 +15,12 @@ import { Sidebar } from "~/components/Sidebar";
 import { useState } from "react";
 import { useLocation } from "react-router";
 
+export async function loader({ context }: Route.LoaderArgs) {
+  return {
+    emailEnabled: !!context.cloudflare.env.RESEND_API_KEY,
+  };
+}
+
 export const meta: Route.MetaFunction = () => [
   // ... existing meta ...
   { title: "FlareStack - Automated Cloudflare IP Protection" },

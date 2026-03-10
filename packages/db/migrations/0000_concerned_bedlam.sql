@@ -24,7 +24,6 @@ CREATE TABLE `session` (
 	`ipAddress` text,
 	`userAgent` text,
 	`userId` text NOT NULL,
-	`activeOrganizationId` text,
 	FOREIGN KEY (`userId`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
@@ -49,99 +48,63 @@ CREATE TABLE `verification` (
 	`updatedAt` integer NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE `invitation` (
-	`id` text PRIMARY KEY NOT NULL,
-	`organizationId` text NOT NULL,
-	`email` text NOT NULL,
-	`role` text,
-	`status` text NOT NULL,
-	`expiresAt` integer NOT NULL,
-	`inviterId` text NOT NULL,
-	FOREIGN KEY (`organizationId`) REFERENCES `organization`(`id`) ON UPDATE no action ON DELETE no action,
-	FOREIGN KEY (`inviterId`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE no action
-);
---> statement-breakpoint
-CREATE TABLE `member` (
-	`id` text PRIMARY KEY NOT NULL,
-	`organizationId` text NOT NULL,
-	`userId` text NOT NULL,
-	`email` text,
-	`role` text NOT NULL,
-	`createdAt` integer NOT NULL,
-	FOREIGN KEY (`organizationId`) REFERENCES `organization`(`id`) ON UPDATE no action ON DELETE no action,
-	FOREIGN KEY (`userId`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE no action
-);
---> statement-breakpoint
-CREATE TABLE `organization` (
-	`id` text PRIMARY KEY NOT NULL,
-	`name` text NOT NULL,
-	`slug` text,
-	`logo` text,
-	`createdAt` integer NOT NULL,
-	`metadata` text
-);
---> statement-breakpoint
-CREATE UNIQUE INDEX `organization_slug_unique` ON `organization` (`slug`);--> statement-breakpoint
 CREATE TABLE `action_logs` (
 	`id` text PRIMARY KEY NOT NULL,
-	`tenant_id` text NOT NULL,
+	`user_id` text NOT NULL,
 	`zone_config_id` text NOT NULL,
 	`rule_id` text NOT NULL,
 	`action_taken` text NOT NULL,
-	`ip` text NOT NULL,
-	`request_count` integer NOT NULL,
+	`target_type` text DEFAULT 'IP' NOT NULL,
+	`target_value` text NOT NULL,
+	`request_count` integer,
 	`metadata` text,
-	`blocked_at` integer NOT NULL,
+	`timestamp` integer NOT NULL,
 	FOREIGN KEY (`zone_config_id`) REFERENCES `zone_configs`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
-CREATE TABLE `add_to_list_rules` (
+CREATE TABLE `add_ip_to_list_rules` (
 	`id` text PRIMARY KEY NOT NULL,
+	`name` text DEFAULT 'IP Mitigation Rule' NOT NULL,
 	`zone_config_id` text NOT NULL,
-	`tenant_id` text NOT NULL,
+	`user_id` text NOT NULL,
 	`cf_list_id` text NOT NULL,
 	`cf_list_name` text,
-	`rate_limit_threshold` integer DEFAULT 10000,
-	`window_seconds` integer DEFAULT 300,
-	`is_active` integer DEFAULT true,
+	`rate_limit_threshold` integer DEFAULT 10000 NOT NULL,
+	`window_seconds` integer DEFAULT 300 NOT NULL,
+	`is_active` integer DEFAULT true NOT NULL,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
 	FOREIGN KEY (`zone_config_id`) REFERENCES `zone_configs`(`id`) ON UPDATE no action ON DELETE no action,
-	FOREIGN KEY (`tenant_id`) REFERENCES `organization`(`id`) ON UPDATE no action ON DELETE no action
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
 CREATE TABLE `cloudflare_accounts` (
 	`id` text PRIMARY KEY NOT NULL,
-	`tenant_id` text NOT NULL,
+	`user_id` text NOT NULL,
 	`label` text NOT NULL,
 	`cf_account_id` text NOT NULL,
 	`cf_api_token` text NOT NULL,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
-	FOREIGN KEY (`tenant_id`) REFERENCES `organization`(`id`) ON UPDATE no action ON DELETE no action
-);
---> statement-breakpoint
-CREATE TABLE `request_activity` (
-	`id` text PRIMARY KEY NOT NULL,
-	`tenant_id` text NOT NULL,
-	`zone_config_id` text NOT NULL,
-	`ip` text NOT NULL,
-	`request_count` integer NOT NULL,
-	`window_start` integer NOT NULL,
-	`timestamp` integer NOT NULL,
-	FOREIGN KEY (`zone_config_id`) REFERENCES `zone_configs`(`id`) ON UPDATE no action ON DELETE no action
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
 CREATE TABLE `zone_configs` (
 	`id` text PRIMARY KEY NOT NULL,
-	`tenant_id` text NOT NULL,
+	`user_id` text NOT NULL,
 	`cf_account_ref` text NOT NULL,
 	`name` text NOT NULL,
 	`cf_zone_id` text NOT NULL,
-	`polling_interval_minutes` integer DEFAULT 5,
-	`is_active` integer DEFAULT true,
+	`is_active` integer DEFAULT true NOT NULL,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
-	FOREIGN KEY (`tenant_id`) REFERENCES `organization`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE no action,
 	FOREIGN KEY (`cf_account_ref`) REFERENCES `cloudflare_accounts`(`id`) ON UPDATE no action ON DELETE no action
+);
+--> statement-breakpoint
+CREATE TABLE `entity_cache` (
+	`namespace` text NOT NULL,
+	`key` text NOT NULL,
+	`synced_at` integer NOT NULL,
+	PRIMARY KEY(`namespace`, `key`)
 );

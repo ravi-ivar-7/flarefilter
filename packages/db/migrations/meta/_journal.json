@@ -5,71 +5,15 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1771721138936,
-      "tag": "0000_eager_ben_urich",
+      "when": 1773135035137,
+      "tag": "0000_concerned_bedlam",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "6",
-      "when": 1771888061422,
-      "tag": "0001_useful_spiral",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1771890446561,
-      "tag": "0002_ordinary_shriek",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1771896095453,
-      "tag": "0003_icy_rattler",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "6",
-      "when": 1771896746784,
-      "tag": "0004_worried_sunset_bain",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "6",
-      "when": 1771970909133,
-      "tag": "0005_gigantic_mach_iv",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "6",
-      "when": 1771977855638,
-      "tag": "0006_little_black_queen",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "6",
-      "when": 1772190053257,
-      "tag": "0007_lowly_snowbird",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "6",
-      "when": 1772250000000,
-      "tag": "0008_rate_limit",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "6",
-      "when": 1773122176190,
-      "tag": "0009_remarkable_vector",
+      "when": 1773136739464,
+      "tag": "0001_same_zaran",
       "breakpoints": true
     }
   ]

@@ -11,7 +11,6 @@
 # Deletes:
 #   - Local D1 databases (.wrangler state)
 #   - Generated migration files
-#   - Local auth secrets (.dev.vars)
 #   - All node_modules
 #   - Build artifacts
 # ============================================
@@ -25,7 +24,7 @@ source "$SCRIPT_DIR/utils.sh"
 log_header "FlareStack  Nuke & Reset"
 
 log_warn "This will delete your local database, generated migrations,"
-log_warn "auth secrets, node_modules, and all build artifacts."
+log_warn "node_modules, and all build artifacts."
 echo ""
 read -p "$(echo -e "${BOLD}${RED}  Are you sure? (y/N) ${NC}")" -n 1 -r
 echo ""
@@ -51,12 +50,7 @@ log_step "Removing generated migration files"
 rm -rf packages/db/migrations
 log_success "Migration files removed"
 
-# ── 3. Local Secrets ────────────────────────
-log_step "Removing local auth secrets"
-rm -f apps/dashboard/.dev.vars
-log_success ".dev.vars removed"
-
-# ── 4. node_modules ─────────────────────────
+# ── 3. node_modules ─────────────────────────
 log_step "Removing node_modules"
 rm -rf node_modules
 rm -rf apps/dashboard/node_modules
@@ -65,7 +59,7 @@ rm -rf packages/db/node_modules
 rm -rf packages/types/node_modules
 log_success "node_modules removed"
 
-# ── 5. Build Artifacts ───────────────────────
+# ── 4. Build Artifacts ───────────────────────
 log_step "Removing build artifacts"
 rm -rf apps/dashboard/build
 rm -rf apps/dashboard/.react-router

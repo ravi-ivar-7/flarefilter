@@ -12,9 +12,9 @@ export async function sendVerificationEmail(
   to: string,
   url: string
 ): Promise<void> {
-  const resend = new Resend(env.RESEND_API_KEY);
-  const from = env.RESEND_FROM || 'FlareStack <onboarding@resend.dev>';
-  const logoUrl = `${env.BETTER_AUTH_BASE_URL || ''}/assets/icon.png`;
+  const resend = new Resend((env.RESEND_API_KEY || '').trim());
+  const from = (env.RESEND_FROM || 'FlareStack <onboarding@resend.dev>').trim();
+  const logoUrl = `${(env.BETTER_AUTH_BASE_URL || '').trim()}/assets/icon.png`;
 
   const { error } = await resend.emails.send({
     from,

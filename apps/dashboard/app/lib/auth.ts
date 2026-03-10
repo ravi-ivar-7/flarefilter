@@ -24,7 +24,8 @@ export const getAuth = (env: AuthEnv) => {
     const db = drizzle(env.DB, { schema });
 
     // Graceful degradation: only enable email verification if Resend is configured.
-    const emailEnabled = !!env.RESEND_API_KEY;
+    // We check for both existence and non-empty string.
+    const emailEnabled = !!(env.RESEND_API_KEY && env.RESEND_API_KEY.length > 0);
 
     return betterAuth({
         baseURL: env.BETTER_AUTH_BASE_URL,
@@ -32,6 +33,13 @@ export const getAuth = (env: AuthEnv) => {
 
         database: drizzleAdapter(db, {
             provider: "sqlite",
+            schema: {
+                user: schema.user,
+                session: schema.session,
+                account: schema.account,
+                verification: schema.verification,
+                rateLimit: schema.rateLimit
+            }
         }),
 
         emailAndPassword: {
@@ -55,6 +63,21 @@ export const getAuth = (env: AuthEnv) => {
             },
         }),
 
+        databaseHooks: {
+            user: {
+                create: {
+                    before: async (user) => {
+                        // If we aren't using email verification (e.g. local dev without Resend), 
+                        // force all new users to be verified so they don't get stuck.
+                        if (!emailEnabled) {
+                            return { data: { ...user, emailVerified: true } };
+                        }
+                        return { data: user };
+                    }
+                }
+            }
+        },
+
         // Rate limiting — always enabled, stored in D1 (safe for serverless/edge).
         // NOTE: Better Auth skips rate limiting entirely when it can't detect an IP.
         // In production, Cloudflare always injects CF-Connecting-IP so this works automatically.
@@ -63,8 +86,7 @@ export const getAuth = (env: AuthEnv) => {
         rateLimit: {
             window: 60,  // 60-second baseline window
             max: 30,     // 30 requests/min general limit
-            storage: "database",
-            modelName: "rateLimit",
+            storage: "memory",
             customRules: {
                 // Sign-in: 5 attempts per minute (brute-force protection)
                 "/sign-in/email": { window: 60, max: 5 },
@@ -81,10 +103,8 @@ export const getAuth = (env: AuthEnv) => {
         advanced: {
             ipAddress: {
                 // In production (Cloudflare), CF-Connecting-IP is always set.
-                // In local dev (Vite), none of these are set so fallbackIp kicks in.
+                // In local dev (Vite), none of these are set.
                 ipAddressHeaders: ["cf-connecting-ip", "x-forwarded-for", "x-real-ip"],
-                // Fallback ensures rate limiting runs locally instead of being skipped.
-                fallbackIp: "127.0.0.1",
             },
         },
     });
