@@ -75,5 +75,6 @@ export async function sendVerificationEmail(
 
   if (error) {
     console.error('[FlareFilter] Failed to send verification email:', error);
+    throw new Error(`Email delivery failed: ${error.message ?? JSON.stringify(error)}`);
   }
 }

@@ -2,6 +2,7 @@ import { type ActionFunctionArgs, type LoaderFunctionArgs } from "react-router";
 import { cloudflareAccounts } from "@flarefilter/db/src/schema/zones";
 import { eq, and } from "drizzle-orm";
 import { CloudflareClient } from "@flarefilter/cloudflare";
+import { CacheStore } from "@flarefilter/db/src/cache";
 import { getAuth } from "~/lib/auth";
 import { getDb } from "~/lib/db";
 
@@ -38,8 +39,9 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
             return Response.json(await cf.lists.getLists());
         }
         return Response.json({ error: "Invalid type for GET. Supported: zones, lists" }, { status: 400 });
-    } catch (err: any) {
-        return Response.json({ error: err.message || "Failed to fetch" }, { status: 500 });
+    } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return Response.json({ error: msg || "Failed to fetch" }, { status: 500 });
     }
 }
 
@@ -70,6 +72,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     if (!account) return Response.json({ error: "Account not found" }, { status: 404 });
 
     const cf = new CloudflareClient(account.cfAccountId, account.cfApiToken);
+    const cacheStore = new CacheStore(db);
 
     try {
         if (type === "zones") {
@@ -96,6 +99,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
             }
 
             const result = await cf.lists.addItems(listId, items);
+            // Keep entity_cache in sync so the next cron run doesn't cold-start
+            // this list and re-add items that were just manually added.
+            const addedIps = items.map(i => i.ip).filter((ip): ip is string => !!ip);
+            if (addedIps.length > 0) {
+                await cacheStore.add(`cf_list:${listId}`, addedIps);
+            }
             return Response.json({ success: true, added: items.length, operationId: result });
         }
 
@@ -115,10 +124,28 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
             try {
                 const itemIds: string[] = JSON.parse(itemIdsJson);
-                const operationId = await cf.lists.deleteItems(listId, itemIds);
-                return Response.json({ success: true, deleted: itemIds.length, operationId });
-            } catch (e: any) {
-                return Response.json({ error: "Failed to delete items", details: e.message }, { status: 400 });
+
+                // We need the actual IP values to remove from cache — fetch them before deleting.
+                // The CF list items endpoint returns full objects including the IP string.
+                //
+                // TOCTOU note: if deleteItems partially fails (some IDs deleted, some not),
+                // the cache will remove IPs that CF didn't actually delete. This is an acceptable
+                // edge-case — the cache will self-heal on the next cold-start GET re-sync.
+                const listItemsBefore = await cf.lists.getItems(listId);
+                const deletedItemMap = new Map(listItemsBefore.map(i => [i.id, i.ip]));
+                const deletedIps = itemIds.map(id => deletedItemMap.get(id)).filter((ip): ip is string => !!ip);
+
+                const operationIds = await cf.lists.deleteItems(listId, itemIds);
+
+                // Sync entity_cache: remove deleted IPs so cron doesn't think they're still there.
+                if (deletedIps.length > 0) {
+                    await cacheStore.remove(`cf_list:${listId}`, deletedIps);
+                }
+
+                return Response.json({ success: true, deleted: itemIds.length, operationIds });
+            } catch (e) {
+                const msg = e instanceof Error ? e.message : String(e);
+                return Response.json({ error: "Failed to delete items", details: msg }, { status: 400 });
             }
         }
 
@@ -142,11 +169,11 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
             return Response.json(results);
         }
-    } catch (err: any) {
+    } catch (err) {
         console.error("Cloudflare API Action Error:", err);
+        const msg = err instanceof Error ? err.message : String(err);
         return Response.json({
-            error: err.message || "Failed to process Cloudflare action",
-            details: err.details
+            error: msg || "Failed to process Cloudflare action",
         }, { status: 500 });
     }
 

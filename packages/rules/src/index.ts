@@ -6,7 +6,24 @@ export interface RuleBaseConfig {
     type: RuleType;
     name: string;
     description: string;
-    table?: any; // Drizzle table
+    /**
+     * The Drizzle SQLite table for this rule type.
+     *
+     * Typed as `any` because Drizzle table generics are computed via complex
+     * internal generic chains and cannot be structurally typed from outside the
+     * drizzle-orm package without causing type incompatibility errors.
+     *
+     * Expected shape: a Drizzle table with at minimum these columns:
+     *   - `id`            (text, primary key)
+     *   - `userId`        (text, FK to user)
+     *   - `zoneConfigId`  (text, FK to zone)
+     *   - `isActive`      (boolean)
+     *
+     * Keep column names consistent across all rule tables — mismatches will
+     * produce runtime errors (not compile-time) due to this `any` escape hatch.
+     */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    table?: any;
 }
 
 export const RULES_MANIFEST: Record<RuleType, RuleBaseConfig> = {

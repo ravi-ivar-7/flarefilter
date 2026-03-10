@@ -1,5 +1,6 @@
 import { CloudflareClient } from '@flarefilter/cloudflare';
 import { ActionLogger } from '../lib/actions/logger';
+import { CacheStore } from '@flarefilter/db/src/cache';
 import { addIpToListRules } from '@flarefilter/db/src/schema/zones';
 
 // Typed rule rows per rule type — extend this union as new rule types are added.
@@ -19,6 +20,7 @@ export interface RuleContext {
     rule: AnyRuleRow; // Typed DB row. Cast to specific type inside handlers if needed.
     cf: CloudflareClient;
     actionLogger: ActionLogger;
+    cacheStore: CacheStore;
     /** Pre-fetched flagged IPs from a batched GraphQL call. When present,
      *  the handler should skip its own analytics query. */
     prefetchedIps?: { ip: string; count: number }[];

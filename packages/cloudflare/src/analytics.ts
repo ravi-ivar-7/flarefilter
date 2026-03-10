@@ -15,6 +15,27 @@ export interface TopStatRow {
   [dimension: string]: string | number;
 }
 
+// ── Internal GraphQL response shapes ─────────────────────────────────────────
+
+interface AdaptiveGroup {
+  count: number;
+  dimensions: Record<string, string | number>;
+}
+
+interface ZoneAnalyticsBlock {
+  httpRequestsAdaptiveGroups: AdaptiveGroup[];
+}
+
+interface GraphQLViewer {
+  [alias: string]: ZoneAnalyticsBlock[];
+}
+
+interface GraphQLResponse {
+  viewer: GraphQLViewer;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export class AnalyticsApi extends CloudflareApiBase {
   /**
    * Queries top requested adaptive groups for a single zone.
@@ -54,7 +75,7 @@ export class AnalyticsApi extends CloudflareApiBase {
 
     const variableDefs: string[] = [];
     const aliasBlocks: string[] = [];
-    const variables: Record<string, any> = {};
+    const variables: Record<string, string | number | undefined> = {};
 
     paramsList.forEach((p, i) => {
       const alias = `zone_${i}`;
@@ -108,8 +129,8 @@ export class AnalyticsApi extends CloudflareApiBase {
             }
         `;
 
-    const data = await this.fetchGraphQL(query, variables);
-    const result = new Map<string, any[]>();
+    const data = await this.fetchGraphQL<GraphQLResponse>(query, variables);
+    const result = new Map<string, TopStatRow[]>();
 
     paramsList.forEach((p, i) => {
       const alias = `zone_${i}`;
@@ -119,10 +140,10 @@ export class AnalyticsApi extends CloudflareApiBase {
         result.set(p.zoneTag, []);
         return;
       }
-      const groups: any[] = zoneData[0]?.httpRequestsAdaptiveGroups ?? [];
+      const groups = zoneData[0]?.httpRequestsAdaptiveGroups ?? [];
       result.set(
         p.zoneTag,
-        groups.map((g: any) => ({ ...g.dimensions, count: g.count }))
+        groups.map(g => ({ ...g.dimensions, count: g.count }))
       );
     });
 
@@ -167,14 +188,20 @@ export class AnalyticsApi extends CloudflareApiBase {
             }
         `;
 
-    const data = await this.fetchGraphQL(query, {
+    interface SingleZoneResponse {
+      viewer: {
+        zones: Array<{ httpRequestsAdaptiveGroups: AdaptiveGroup[] }>;
+      };
+    }
+
+    const data = await this.fetchGraphQL<SingleZoneResponse>(query, {
       zoneTag: params.zoneTag,
       start: datetimeStart || undefined,
       end: datetimeEnd || undefined,
       limit: params.limit,
     });
 
-    const groups: any[] = data?.viewer?.zones?.[0]?.httpRequestsAdaptiveGroups ?? [];
-    return groups.map((g: any) => ({ ...g.dimensions, count: g.count }));
+    const groups = data?.viewer?.zones?.[0]?.httpRequestsAdaptiveGroups ?? [];
+    return groups.map(g => ({ ...g.dimensions, count: g.count }));
   }
 }

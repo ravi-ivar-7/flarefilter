@@ -1,5 +1,6 @@
 import { cloudflareAccounts, zoneConfigs, addIpToListRules, actionLogs } from "@flarefilter/db/src/schema/zones";
-import { desc, eq, sql, and, gte, lte } from "drizzle-orm";
+import { entityCache } from "@flarefilter/db/src/schema/cache";
+import { desc, eq, sql, and, gte, lte, inArray } from "drizzle-orm";
 import { useNavigation, useActionData, useRevalidator, redirect } from "react-router";
 import { getAuth } from "~/lib/auth";
 import { useState, useEffect, useRef } from "react";
@@ -123,13 +124,24 @@ export async function action({ request, context }: Route.ActionArgs) {
   if (intent === "delete_zone") {
     const zoneId = formData.get("zoneId") as string;
     if (zoneId) {
-      // Atomic cascade: batch all deletes into a single D1 round-trip.
-      // All deletes are user-scoped to prevent cross-user data corruption.
+      // Find all cfListIds in this zone's rules so we can wipe their cache entries.
+      const rulesInZone = await db
+        .select({ cfListId: addIpToListRules.cfListId })
+        .from(addIpToListRules)
+        .where(and(eq(addIpToListRules.zoneConfigId, zoneId), eq(addIpToListRules.userId, userId)));
+
+      const cacheNamespaces = rulesInZone.map(r => `cf_list:${r.cfListId}`);
+
+      // Atomic cascade: one D1 round-trip for all deletes.
       const deletes: any[] = [
         db.delete(actionLogs).where(and(eq(actionLogs.zoneConfigId, zoneId), eq(actionLogs.userId, userId))),
         ...Object.values(RULE_REGISTRY)
           .filter(c => c.table)
           .map(c => db.delete(c.table).where(and(eq(c.table.zoneConfigId, zoneId), eq(c.table.userId, userId)))),
+        // Clear entity_cache for every CF list this zone's rules referenced.
+        ...(cacheNamespaces.length > 0
+          ? [db.delete(entityCache).where(inArray(entityCache.namespace, cacheNamespaces))]
+          : []),
         db.delete(zoneConfigs).where(
           and(eq(zoneConfigs.id, zoneId), eq(zoneConfigs.userId, userId))
         ),
@@ -145,10 +157,27 @@ export async function action({ request, context }: Route.ActionArgs) {
     const config = RULE_REGISTRY[ruleType];
 
     if (ruleId && config) {
-      await db.delete(actionLogs).where(eq(actionLogs.ruleId, ruleId));
-      await db.delete(config.table).where(
-        and(eq(config.table.id, ruleId), eq(config.table.userId, userId))
-      );
+      // Fetch the rule first so we can clear its cache namespace.
+      const [ruleRow] = await db
+        .select()
+        .from(config.table)
+        .where(and(eq(config.table.id, ruleId), eq(config.table.userId, userId)));
+
+      const cacheDeletes: any[] = [];
+      if (ruleRow?.cfListId) {
+        cacheDeletes.push(
+          db.delete(entityCache).where(eq(entityCache.namespace, `cf_list:${ruleRow.cfListId}`))
+        );
+      }
+
+      // Atomic: delete logs + rule row + cache in one batch.
+      await (db as any).batch([
+        db.delete(actionLogs).where(eq(actionLogs.ruleId, ruleId)),
+        db.delete(config.table).where(
+          and(eq(config.table.id, ruleId), eq(config.table.userId, userId))
+        ),
+        ...cacheDeletes,
+      ]);
     }
     return null;
   }
@@ -157,19 +186,20 @@ export async function action({ request, context }: Route.ActionArgs) {
     const zoneId = formData.get("zoneId") as string;
     const isActive = formData.get("isActive") === "true";
     if (zoneId) {
-      // 1. Update the zone status
-      await db.update(zoneConfigs)
-        .set({ isActive, updatedAt: new Date() })
-        .where(and(eq(zoneConfigs.id, zoneId), eq(zoneConfigs.userId, userId)));
-
-      // 2. Cascade the status to all rules in this zone across ALL implemented rule tables in the registry
-      for (const config of Object.values(RULE_REGISTRY)) {
-        if (config.table) {
-          await db.update(config.table)
-            .set({ isActive, updatedAt: new Date() })
-            .where(and(eq(config.table.zoneConfigId, zoneId), eq(config.table.userId, userId)));
-        }
-      }
+      // Batch all updates (zone + every rule table) into one D1 round-trip.
+      const updates: any[] = [
+        db.update(zoneConfigs)
+          .set({ isActive, updatedAt: new Date() })
+          .where(and(eq(zoneConfigs.id, zoneId), eq(zoneConfigs.userId, userId))),
+        ...Object.values(RULE_REGISTRY)
+          .filter(c => c.table)
+          .map(c =>
+            db.update(c.table)
+              .set({ isActive, updatedAt: new Date() })
+              .where(and(eq(c.table.zoneConfigId, zoneId), eq(c.table.userId, userId)))
+          ),
+      ];
+      await (db as any).batch(updates);
     }
     return null;
   }
@@ -246,13 +276,23 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     if (endStr) conditions.push(lte(actionLogs.timestamp, new Date(endStr)));
   }
 
-  const [accounts, zones, recentActions, [{ count: totalBlocks }], ...ruleResults] = await Promise.all([
+  // Collapse all loader queries into a single D1 HTTP round-trip via db.batch().
+  // This is significantly faster than Promise.all (N parallel requests) because
+  // D1 has per-request latency (~50ms); batch() amortises that across all queries.
+  const batchQueries: any[] = [
     db.select().from(cloudflareAccounts).where(eq(cloudflareAccounts.userId, userId)).orderBy(desc(cloudflareAccounts.createdAt)),
     db.select().from(zoneConfigs).where(eq(zoneConfigs.userId, userId)).orderBy(desc(zoneConfigs.createdAt)),
     db.select().from(actionLogs).where(and(...conditions)).orderBy(desc(actionLogs.timestamp)).limit(queryLimit),
     db.select({ count: sql<number>`count(*)` }).from(actionLogs).where(and(...conditions)),
-    ...activeRuleConfigs.map(c => db.select().from(c.table).where(eq(c.table.userId, userId)).orderBy(desc(c.table.createdAt)))
-  ]);
+    ...activeRuleConfigs.map(c => db.select().from(c.table).where(eq(c.table.userId, userId)).orderBy(desc(c.table.createdAt))),
+  ];
+
+  const batchResults: any[][] = await (db as any).batch(batchQueries);
+
+  const [accounts, zones, recentActions, countResult, ...ruleResults] =
+    batchResults as [typeof cloudflareAccounts.$inferSelect[], typeof zoneConfigs.$inferSelect[], typeof actionLogs.$inferSelect[], { count: number }[], ...any[]];
+
+  const totalBlocks = (countResult[0]?.count ?? 0) as number;
 
   const rules = ruleResults.flatMap((res, i) => {
     const type = activeRuleConfigs[i].type;

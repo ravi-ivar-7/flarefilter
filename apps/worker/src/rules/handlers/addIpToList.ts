@@ -1,15 +1,14 @@
 import { RuleHandler, RuleContext } from '../interface';
 import { log } from '../../lib/log';
-import type { ListItem } from '@flarefilter/cloudflare';
+import type { ListItemInput } from '@flarefilter/cloudflare';
 
 export class AddIpToListRule implements RuleHandler {
     /**
      * Queries Cloudflare Analytics for IPs exceeding the rule's threshold,
-     * adds them to the configured CF Custom List in a single batch API call,
-     * and writes audit log entries only for IPs that were genuinely new
-     * (not already present in the list).
+     * deduplicates against the D1 entity cache, adds only genuinely new IPs
+     * via a single batch POST, then writes audit logs.
      */
-    async execute({ zone, rule, cf, actionLogger, prefetchedIps }: RuleContext): Promise<void> {
+    async execute({ zone, rule, cf, actionLogger, cacheStore, prefetchedIps }: RuleContext): Promise<void> {
         log(
             `  Rule [add_ip_to_list] id=${rule.id} list=${rule.cfListId} ` +
             `threshold=${rule.rateLimitThreshold} window=${rule.windowSeconds}s`
@@ -25,14 +24,12 @@ export class AddIpToListRule implements RuleHandler {
             return;
         }
 
+        // ── 1. Resolve flagged IPs ─────────────────────────────────────────────
         let flaggedIPs: { ip: string; count: number }[] = [];
 
-        // 1. Use pre-fetched IPs when supplied by the batched cron orchestrator.
-        //    Fall back to a per-rule analytics query only when not available.
         if (prefetchedIps) {
             // Re-filter against THIS rule's threshold — the batched query used
-            // the lowest threshold across all rules on this zone, so the
-            // pre-fetched set may contain IPs below this specific rule's bar.
+            // the lowest threshold across all rules on this zone.
             flaggedIPs = prefetchedIps.filter(({ count }) => count > rateLimitThreshold);
             log(`  Using ${flaggedIPs.length} pre-fetched flagged IP(s) for rule ${rule.id} (filtered from ${prefetchedIps.length}).`);
         } else {
@@ -47,8 +44,8 @@ export class AddIpToListRule implements RuleHandler {
                 flaggedIPs = results
                     .filter(r => r.count > rateLimitThreshold)
                     .map(r => ({ ip: String(r['clientIP']), count: r.count as number }));
-            } catch (err: any) {
-                console.error(`  Failed to query abusive IPs for rule ${rule.id} on zone ${zone.name}:`, err.message);
+            } catch (err) {
+                console.error(`  Failed to query abusive IPs for rule ${rule.id} on zone ${zone.name}:`, err instanceof Error ? err.message : err);
                 return;
             }
         }
@@ -58,61 +55,79 @@ export class AddIpToListRule implements RuleHandler {
             return;
         }
 
-        log(`  Found ${flaggedIPs.length} flagged IP(s). Submitting batch to CF list…`);
+        // ── 2. Deduplicate against the entity cache ────────────────────────────
+        const namespace = `cf_list:${cfListId}`;
+        let cached = await cacheStore.getAll(namespace);
 
-        // 2. Add IPs to the CF list.
-        //    addItemsSafe handles the mixed case:
-        //      - Fast path: single batch POST (all new).
-        //      - Slow path: sequential per-item POSTs in chunks,
-        //                   so new items are never silently lost with the dupes.
-        let added: ListItem[] = [];
-        let alreadyInList: ListItem[] = [];
-        let failed: ListItem[] = [];
-        let operationIds: string[] = [];
-
-        try {
-            const comment = `FlareFilter auto-added ${new Date().toISOString()}`;
-            ({ added, alreadyInList, failed, operationIds } = await cf.lists.addItemsSafe(
-                cfListId,
-                flaggedIPs.map(({ ip }) => ({ ip, comment }))
-            ));
-        } catch (err: any) {
-            // Hard error (non-duplicate): auth failure, list not found, etc.
-            console.error(`  CF list add failed for rule ${rule.id}:`, err.message);
-            return; // Nothing was added — don't log phantom entries.
+        // Cold start: cache is empty — fetch the live list from CF to populate it.
+        if (cached.size === 0) {
+            log(`  Cache miss for ${namespace}. Fetching live list from CF…`);
+            try {
+                // Cold-start: O(list_size) — paginates through ALL items in the CF list.
+                // This only fires once per list (first cron run after deploy or after
+                // a cache-clearing event such as a zone/rule deletion). All subsequent
+                // runs take the warm path (1 D1 read + 1 POST).
+                const liveItems = await cf.lists.getItems(cfListId);
+                const liveIps = liveItems.map(i => i.ip).filter((ip): ip is string => !!ip);
+                await cacheStore.sync(namespace, liveIps);
+                cached = new Set(liveIps);
+                log(`  Cache populated with ${cached.size} existing IP(s).`);
+            } catch (err) {
+                console.error(`  Failed to fetch live list for ${cfListId}:`, err instanceof Error ? err.message : err);
+                return;
+            }
         }
 
-        // 3. Log summary before writing to DB.
+        const alreadyInList = flaggedIPs.filter(({ ip }) => cached.has(ip));
+        const newItems = flaggedIPs.filter(({ ip }) => !cached.has(ip));
+
         if (alreadyInList.length > 0) {
-            const alreadyInListIps = alreadyInList.map(i => i.ip);
-            const preview = alreadyInListIps.length > 10
-                ? `${alreadyInListIps.slice(0, 10).join(', ')} … (+${alreadyInListIps.length - 10} more)`
-                : alreadyInListIps.join(', ');
-            log(`  ${alreadyInListIps.length} IP(s) already in list: ${preview}`);
-        }
-        if (failed.length > 0) {
-            const failedIps = failed.map(i => i.ip);
-            const preview = failedIps.length > 10
-                ? `${failedIps.slice(0, 10).join(', ')} … (+${failedIps.length - 10} more)`
-                : failedIps.join(', ');
-            console.error(`  ${failedIps.length} IP(s) failed to add: ${preview}`);
+            const preview = alreadyInList.length > 10
+                ? `${alreadyInList.slice(0, 10).map(i => i.ip).join(', ')} … (+${alreadyInList.length - 10} more)`
+                : alreadyInList.map(i => i.ip).join(', ');
+            log(`  ${alreadyInList.length} IP(s) already in list (cache hit): ${preview}`);
         }
 
-        if (added.length === 0) {
-            log(`  No new IPs added to list for rule ${rule.id}.`);
+        if (newItems.length === 0) {
+            log(`  No new IPs to add for rule ${rule.id}.`);
             return;
         }
 
-        // 4. Pre-compute metadata string ONCE — identical for every IP in this batch.
-        //    Avoids calling JSON.stringify() inside the .map() for every row.
-        const metadata = JSON.stringify({ cfListId, cfOperationIds: operationIds });
+        log(`  ${newItems.length} new IP(s) to add. Submitting batch to CF list…`);
+
+        // ── 3. Batch POST only the new items (guaranteed no duplicates) ────────
+        const comment = `FlareFilter auto-added ${new Date().toISOString()}`;
+        const payload: ListItemInput[] = newItems.map(({ ip }) => ({ ip, comment }));
+
+        let operationId: string | null = null;
+        try {
+            operationId = await cf.lists.addItems(cfListId, payload);
+        } catch (err) {
+            // Unexpected failure — re-sync cache from CF, then abort.
+            // A duplicate error here would be a cache bug; any other error is
+            // an auth/network issue. Either way, refreshing the cache is correct.
+            console.error(`  CF list add failed for rule ${rule.id}:`, err instanceof Error ? err.message : err);
+            try {
+                const liveItems = await cf.lists.getItems(cfListId);
+                const liveIps = liveItems.map(i => i.ip).filter((ip): ip is string => !!ip);
+                await cacheStore.sync(namespace, liveIps);
+                log(`  Cache re-synced after failure (${liveIps.length} items).`);
+            } catch (syncErr) {
+                console.error(`  Cache re-sync also failed:`, syncErr instanceof Error ? syncErr.message : syncErr);
+            }
+            return;
+        }
+
+        // ── 4. Update cache with the newly added IPs ───────────────────────────
+        const newIps = newItems.map(i => i.ip);
+        await cacheStore.add(namespace, newIps);
+
+        // ── 5. Batch-insert audit log entries ONLY for newly added IPs ─────────
+        const metadata = JSON.stringify({ cfListId, cfOperationId: operationId });
         const now = new Date();
 
-        // 5. Batch-insert audit log entries ONLY for newly added IPs.
-        const addedSet = new Set(added.map(i => i.ip));
-        const newlyAdded = flaggedIPs.filter(({ ip }) => addedSet.has(ip));
         await actionLogger.logActions(
-            newlyAdded.map(({ ip, count }) => ({
+            newItems.map(({ ip, count }) => ({
                 userId: zone.userId,
                 zoneConfigId: zone.id,
                 ruleId: rule.id,
@@ -120,15 +135,14 @@ export class AddIpToListRule implements RuleHandler {
                 targetType: 'IP',
                 targetValue: ip,
                 requestCount: count,
-                // cfOperationIds lets us trace back to the exact CF async
-                // operation(s) that added this IP — useful for auditing/rollback.
                 metadata,
                 timestamp: now,
             }))
         );
 
         log(
-            `  Done. Added: ${added.length}, Already in list: ${alreadyInList.length}, Failed: ${failed.length}.`
+            `  Done. Added: ${newItems.length}, Already in list: ${alreadyInList.length}. ` +
+            (operationId ? `CF operation: ${operationId}` : '')
         );
     }
 }

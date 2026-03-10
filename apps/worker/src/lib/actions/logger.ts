@@ -50,27 +50,24 @@ export class ActionLogger {
             timestamp: p.timestamp ?? now,
         }));
 
-        try {
-            // Chunk inserts to respect D1's per-statement row limit.
-            if (rows.length <= D1_MAX_INSERT_ROWS) {
-                await this.db.insert(actionLogs).values(rows);
-            } else {
-                const chunks: typeof rows[] = [];
-                for (let i = 0; i < rows.length; i += D1_MAX_INSERT_ROWS) {
-                    chunks.push(rows.slice(i, i + D1_MAX_INSERT_ROWS));
-                }
-                // Use db.batch() to send all chunks in one HTTP round-trip.
-                await (this.db as any).batch(
-                    chunks.map(chunk => this.db.insert(actionLogs).values(chunk))
-                );
+        // Chunk inserts to respect D1's per-statement row limit.
+        if (rows.length <= D1_MAX_INSERT_ROWS) {
+            await this.db.insert(actionLogs).values(rows);
+        } else {
+            const chunks: typeof rows[] = [];
+            for (let i = 0; i < rows.length; i += D1_MAX_INSERT_ROWS) {
+                chunks.push(rows.slice(i, i + D1_MAX_INSERT_ROWS));
             }
-
-            const preview = entries.length > 10
-                ? `${entries.slice(0, 10).map(e => e.targetValue).join(', ')} … (+${entries.length - 10} more)`
-                : entries.map(e => e.targetValue).join(', ');
-            log(`  > Logged ${entries.length} action(s): ${preview}`);
-        } catch (error) {
-            console.error(`Failed to batch-write ${entries.length} action log(s):`, error);
+            // Drizzle's D1 `.batch()` is not in the public typed API yet;
+            // `as any` is the established workaround used throughout this codebase.
+            await (this.db as any).batch(
+                chunks.map(chunk => this.db.insert(actionLogs).values(chunk))
+            );
         }
+
+        const preview = entries.length > 10
+            ? `${entries.slice(0, 10).map(e => e.targetValue).join(', ')} … (+${entries.length - 10} more)`
+            : entries.map(e => e.targetValue).join(', ');
+        log(`  > Logged ${entries.length} action(s): ${preview}`);
     }
 }

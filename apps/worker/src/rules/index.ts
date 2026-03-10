@@ -1,7 +1,14 @@
 import { RuleHandler } from './interface';
 import { AddIpToListRule } from './handlers/addIpToList';
 
-// We map the database rule "type" string to its matching RuleHandler class
+// We map the database rule "type" string to its matching RuleHandler class.
+//
+// IMPORTANT — STATELESSNESS REQUIREMENT:
+// These handler instances are singletons shared across ALL concurrent zone
+// invocations in a single cron run (via Promise.allSettled in engine.ts).
+// Every handler MUST be completely stateless (no instance variables mutated
+// during execute()). All per-invocation state must live in local variables
+// inside execute(). Violating this will cause subtle data-race bugs.
 export const RuleHandlers: Record<string, RuleHandler> = {
     'add_ip_to_list': new AddIpToListRule(),
     // Future plugins:

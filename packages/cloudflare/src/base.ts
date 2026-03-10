@@ -7,7 +7,7 @@ export class CloudflareApiBase {
     /**
      * Raw GraphQL wrapper. Throws on network or API-level errors.
      */
-    protected async fetchGraphQL<T = any>(
+    protected async fetchGraphQL<T = unknown>(
         query: string,
         variables: Record<string, any> = {}
     ): Promise<T> {
@@ -36,7 +36,7 @@ export class CloudflareApiBase {
     /**
      * Simple REST wrapper (returns payload.result).
      */
-    protected async fetchRest<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    protected async fetchRest<T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> {
         const payload = await this.fetchRestFull<T>(endpoint, options);
         return payload.result;
     }
@@ -47,7 +47,7 @@ export class CloudflareApiBase {
      * Fix: reads the body as text first, then parses as JSON, so we never
      * double-consume the Response body on error paths.
      */
-    protected async fetchRestFull<T = any>(
+    protected async fetchRestFull<T = unknown>(
         endpoint: string,
         options: RequestInit = {}
     ): Promise<{

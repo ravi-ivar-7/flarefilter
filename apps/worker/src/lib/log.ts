@@ -13,6 +13,6 @@ export function initLogger(debug: boolean): void {
     _debug = debug;
 }
 
-export function log(...args: any[]): void {
+export function log(...args: unknown[]): void {
     if (_debug) console.log(...args);
 }

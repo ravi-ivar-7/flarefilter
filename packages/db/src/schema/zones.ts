@@ -17,7 +17,7 @@ export const zoneConfigs = sqliteTable('zone_configs', {
     cfAccountRef: text('cf_account_ref').notNull().references(() => cloudflareAccounts.id),
     name: text('name').notNull(),
     cfZoneId: text('cf_zone_id').notNull(),
-    isActive: integer('is_active', { mode: 'boolean' }).default(true),
+    isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
@@ -33,7 +33,7 @@ export const addIpToListRules = sqliteTable('add_ip_to_list_rules', {
     cfListName: text('cf_list_name'),
     rateLimitThreshold: integer('rate_limit_threshold').notNull().default(10000),
     windowSeconds: integer('window_seconds').notNull().default(300),
-    isActive: integer('is_active', { mode: 'boolean' }).default(true),
+    isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });

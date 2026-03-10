@@ -75,7 +75,7 @@ export default function LoginPage() {
             await authClient.signUp.email(
                 { email, password, name },
                 {
-                    onSuccess: (ctx: any) => {
+                    onSuccess: (ctx: { data?: { user?: { emailVerified?: boolean } } }) => {
                         // If email verification is enabled, the user won't be verified yet.
                         // Redirect them to the verify-email page.
                         // If Gmail is not configured, Better Auth auto-marks emailVerified=true
@@ -86,7 +86,7 @@ export default function LoginPage() {
                             navigate('/dashboard');
                         }
                     },
-                    onError: (ctx: any) => {
+                    onError: (ctx: { error: { status: number; message?: string } }) => {
                         if (ctx.error.status === 429) {
                             setError('Too many sign-up attempts. Please wait a minute and try again.');
                         } else {
@@ -101,7 +101,7 @@ export default function LoginPage() {
                 { email, password },
                 {
                     onSuccess: () => navigate('/dashboard'),
-                    onError: (ctx: any) => {
+                    onError: (ctx: { error: { status: number; message?: string } }) => {
                         if (ctx.error.status === 403) {
                             // Email not verified — redirect to verify-email page
                             navigate(`/verify-email?email=${encodeURIComponent(email)}`);

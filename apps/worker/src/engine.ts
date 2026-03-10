@@ -1,6 +1,7 @@
 import { RuleHandlers } from './rules/index';
 import { CloudflareClient } from '@flarefilter/cloudflare';
 import { ActionLogger } from './lib/actions/logger';
+import { CacheStore } from '@flarefilter/db/src/cache';
 import { log } from './lib/log';
 
 import { cloudflareAccounts } from '@flarefilter/db/src/schema/zones';
@@ -17,10 +18,12 @@ export class RuleEngine {
     /**
      * @param accountMap   Pre-loaded map of cfAccountRef → account row.
      * @param actionLogger Shared across all zones — stateless, safe to reuse.
+     * @param cacheStore   Shared D1 entity cache — namespace-isolated, safe to reuse.
      */
     constructor(
         private accountMap: Map<string, AccountRow>,
-        private actionLogger: ActionLogger
+        private actionLogger: ActionLogger,
+        private cacheStore: CacheStore
     ) { }
 
     /**
@@ -105,6 +108,7 @@ export class RuleEngine {
                     rule,
                     cf,
                     actionLogger: this.actionLogger,
+                    cacheStore: this.cacheStore,
                     prefetchedIps,
                 });
             })

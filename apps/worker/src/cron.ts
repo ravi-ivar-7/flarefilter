@@ -5,6 +5,7 @@ import { RULES_MANIFEST } from '@flarefilter/rules';
 import { Env } from './index';
 import { RuleEngine } from './engine';
 import { ActionLogger } from './lib/actions/logger';
+import { CacheStore } from '@flarefilter/db/src/cache';
 import { CloudflareClient } from '@flarefilter/cloudflare';
 import { initLogger, log } from './lib/log';
 
@@ -167,7 +168,8 @@ export async function runCronTasks(env: Env): Promise<void> {
 
     // ── 5. Create engine and process all zones concurrently ───────────────────
     const actionLogger = new ActionLogger(db);
-    const engine = new RuleEngine(accountMap, actionLogger);
+    const cacheStore = new CacheStore(db);
+    const engine = new RuleEngine(accountMap, actionLogger, cacheStore);
 
     const results = await Promise.allSettled(
         activeZones.map(zone =>

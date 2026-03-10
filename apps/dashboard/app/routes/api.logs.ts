@@ -45,7 +45,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
         const logs = await query;
         return Response.json(logs);
-    } catch (e: any) {
-        return Response.json({ error: e.message || "Failed to fetch logs" }, { status: 500 });
+    } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        return Response.json({ error: msg || "Failed to fetch logs" }, { status: 500 });
     }
 }

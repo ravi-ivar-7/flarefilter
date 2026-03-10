@@ -4,7 +4,16 @@ import { drizzle } from "drizzle-orm/d1";
 import * as schema from "@flarefilter/db/src/schema/index";
 import { sendVerificationEmail } from "./email";
 
-export const getAuth = (env: any) => {
+/** Minimum env bindings required to initialise Better Auth. */
+export interface AuthEnv {
+    DB: D1Database;
+    BETTER_AUTH_SECRET: string;
+    BETTER_AUTH_BASE_URL: string;
+    RESEND_API_KEY?: string;
+    RESEND_FROM?: string;
+}
+
+export const getAuth = (env: AuthEnv) => {
     if (!env.BETTER_AUTH_SECRET) {
         throw new Error("BETTER_AUTH_SECRET is not set — refusing to start with an insecure configuration.");
     }
@@ -36,7 +45,7 @@ export const getAuth = (env: any) => {
             emailVerification: {
                 sendVerificationEmail: async ({ user, url }: { user: any; url: string }) => {
                     await sendVerificationEmail(
-                        { RESEND_API_KEY: env.RESEND_API_KEY, RESEND_FROM: env.RESEND_FROM, BETTER_AUTH_BASE_URL: env.BETTER_AUTH_BASE_URL },
+                        { RESEND_API_KEY: env.RESEND_API_KEY!, RESEND_FROM: env.RESEND_FROM, BETTER_AUTH_BASE_URL: env.BETTER_AUTH_BASE_URL },
                         user.email,
                         url
                     );
